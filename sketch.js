@@ -304,12 +304,6 @@ var rabbitCharacter =
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
 
-			//legs
-			rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
-			rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
-			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
-			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
-
 			push();
 			translate(x - (25 * s) + ((20 * s) / 2), 
 					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
@@ -331,12 +325,36 @@ var rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
 			pop();
+			if (this.userInput.airCondition == "walking")
+			{
+				//main body
+				rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+				rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+				rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+				rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
-			//main body
-			rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
-			rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
-			rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
-			rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+				//legs
+				rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
+				rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
+				rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
+				rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+			}
+			else if (this.userInput.airCondition == "jumping")
+			{
+				// //back legs
+				// rect(x - (20 * s), y + (215 * s), 15 * s, 15 * s); // front left leg
+				// rect(x + (10 * s), y + (215 * s), 15 * s, 15 * s); // front right leg
+
+				//main body
+				rect(x - (22.5 * s), y + (150 * s), 45 * s, 70 * s); //body
+				rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+				rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+				rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+				//front legs
+				rect(x - (35 * s), y + (190 * s), 20 * s, 20 * s); // front left leg
+				rect(x + (15 * s), y + (190 * s), 20 * s, 20 * s); // front right leg
+			}
 
 			//pink elements
 			fill(255, 130, 197); // pink color
