@@ -110,11 +110,47 @@ var rabbitCharacter =
 		backLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null,  innerLegHeight: null},
 		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
 	},
+
+	earRotationData:
+	{
+		currentlyRotating: false,
+		earsGoingDown: true,
+		currentRotationValue: 0
+	},
+
 	drawRabbit: function()
 	{
 		s = this.size
 		x = this.xPos
 		y = this.yPos
+
+		if(this.earRotationData.currentlyRotating)
+		{
+			if(this.earRotationData.earsGoingDown)
+			{
+				if(this.earRotationData.currentRotationValue == 100)
+				{
+					this.earRotationData.earsGoingDown = false;
+				}
+				else
+				{
+					this.earRotationData.currentRotationValue += 10;
+				}
+				
+			}
+			else
+			{
+				if(this.earRotationData.currentRotationValue == 0)
+				{
+					this.earRotationData.earsGoingDown = true;
+					this.earRotationData.currentlyRotating = false;
+				}
+				else
+				{
+					this.earRotationData.currentRotationValue -= 5;
+				}
+			}
+		}
 
 		if(this.legData.rightFootForward == true && frameCount % 7 == 0)
 			{
@@ -163,18 +199,37 @@ var rabbitCharacter =
 			
 			stroke(0);
 			strokeWeight(5 * s);
+
+			push();
+			translate(x + (10 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+			angleMode(DEGREES);
+			rotate(-this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+			pop();
+
+			push();
+			translate(x + (45 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+			angleMode(DEGREES);
+			rotate(this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+			pop();
+
 			//main body part 2/2
 			rect(x, y + (120 * s), 70 * s, 60 * s); //head
-			rect(x + (10 * s), y + (80 * s), 20 * s, 40 * s); //left ear
-			rect(x + (45 * s), y + (80 * s), 20 * s, 40 * s); //right ear
 			rect(x + (30 * s), y + (140 * s), 2 * s, 20 * s); //left eye
 			rect(x + (55 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
 			//pink elements
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
-			rect(x + (20 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
-			rect(x + (55 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
 			ellipse(this.xPos, this.getFeetPos(), 20, 20);
@@ -208,18 +263,37 @@ var rabbitCharacter =
 			}
 			stroke(0);
 			strokeWeight(5 * s);
+
+			push();
+			translate(x - (30 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+			angleMode(DEGREES);
+			rotate(this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+			pop();
+
+			push();
+			translate(x - (65 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+			angleMode(DEGREES);
+			rotate(-this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+			pop();
+
 			//main body part 2/2
 			rect(x - (70 * s), y + (120 * s), 70 * s, 60 * s); //head
-			rect(x - (30 * s), y + (80 * s), 20 * s, 40 * s); //left ear
-			rect(x - (65 * s), y + (80 * s), 20 * s, 40 * s); //right ear
 			rect(x - (32 * s), y + (140 * s), 2 * s, 20 * s); //left eye
 			rect(x - (57 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
 			//pink elements
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
-			rect(x - (25 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
-			rect(x - (60 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
 			rect(x - (45 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
 			ellipse(this.xPos, this.getFeetPos(), 20, 20);
@@ -229,28 +303,44 @@ var rabbitCharacter =
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
-			
-
-			//main body
-			rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
-			rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
-			rect(x - (25 * s), y + (80 * s), 20 * s, 40 * s); //left ear
-			rect(x + (8 * s), y + (80 * s), 20 * s, 40 * s); //right ear
-			rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
-			rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
 			//legs
 			rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
 			rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
 			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
-
 			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+
+			push();
+			translate(x - (25 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+			angleMode(DEGREES);
+			rotate(-this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+			pop();
+
+			push();
+			translate(x + (8 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+			angleMode(DEGREES);
+			rotate(this.earRotationData.currentRotationValue);
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+			pop();
+
+			//main body
+			rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+			rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+			rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+			rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
 			//pink elements
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
-			rect(x - (15 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
-			rect(x + (18 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
 			ellipse(this.xPos, this.getFeetPos(), 20, 20);
@@ -367,6 +457,7 @@ function keyReleased()
     //space bar
     else if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
     {
+		rabbitCharacter.earRotationData.currentlyRotating = true;
         rabbitCharacter.yPos -= 100;
 		rabbitCharacter.userInput.airCondition = "jumping"
     }
