@@ -1,6 +1,50 @@
 //global vars
 var floorPos_y;
 
+// var levels:
+// {
+// 	one:
+// 	{
+
+// 	},
+// 	two:
+// 	{
+
+// 	},
+// 	three:
+// 	{
+
+// 	},
+// 	four:
+// 	{
+
+// 	},
+// 	five:
+// 	{
+
+// 	},
+// 	size:
+// 	{
+
+// 	},
+// 	seven:
+// 	{
+
+// 	},
+// 	eight:
+// 	{
+
+// 	},
+// 	nine:
+// 	{
+
+// 	},
+// 	ten:
+// 	{
+
+// 	}
+// }
+
 //objects
 
 //--------------------DRAW GROUND--------------------//
@@ -52,10 +96,12 @@ var drawGround =
 var rabbitCharacter = 
 {
 	xPos: 512,
-	yPos: 200,
-	feetPos: null,
+	yPos: 217, 
 	size: 1,
-	floorPos: null,
+	getFeetPos: function ()
+	{
+		return this.yPos + (215 * s)
+	},
 	userInput: {direction: "front", airCondition: "walking"},
 	legData: 
 	{
@@ -64,14 +110,13 @@ var rabbitCharacter =
 		backLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null,  innerLegHeight: null},
 		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
 	},
-	
 	drawRabbit: function()
 	{
 		s = this.size
 		x = this.xPos
 		y = this.yPos
 
-		if(this.legData.rightFootForward == true && frameCount % 50 == 0)
+		if(this.legData.rightFootForward == true && frameCount % 7 == 0)
 			{
 				this.legData.backLegs.outerLegHeight = 28 * s;
 				this.legData.backLegs.innerLegHeight = 34 * s;
@@ -79,7 +124,7 @@ var rabbitCharacter =
 				this.legData.frontLegs.innerLegHeight = 28 * s;
 				this.legData.rightFootForward = false;
 			}
-			else if(this.legData.rightFootForward == false && frameCount % 50 == 0)
+			else if(this.legData.rightFootForward == false && frameCount % 7 == 0)
 			{
 				this.legData.backLegs.outerLegHeight = 34 * s;
 				this.legData.backLegs.innerLegHeight = 28 * s;
@@ -90,6 +135,7 @@ var rabbitCharacter =
 
 		if(this.userInput.direction == "right")
 			{	
+			this.xPos += 4;
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
@@ -130,9 +176,12 @@ var rabbitCharacter =
 			rect(x + (20 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
 			rect(x + (55 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
-		}
+			fill(255, 0, 0);
+			ellipse(this.xPos, this.getFeetPos(), 20, 20);
+			}
 		else if(this.userInput.direction == "left")
 		{
+			this.xPos -= 5;
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
@@ -172,45 +221,124 @@ var rabbitCharacter =
 			rect(x - (25 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
 			rect(x - (60 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
 			rect(x - (45 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+			fill(255, 0, 0);
+			ellipse(this.xPos, this.getFeetPos(), 20, 20);
 		}
-	else if(this.userInput.direction == "front")
+		else if(this.userInput.direction == "front")
+		{
+			stroke(0); //black outline color
+			strokeWeight(5 * s); //black outline width
+			fill(255); // white color
+			
+
+			//main body
+			rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+			rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+			rect(x - (25 * s), y + (80 * s), 20 * s, 40 * s); //left ear
+			rect(x + (8 * s), y + (80 * s), 20 * s, 40 * s); //right ear
+			rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+			rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+			//legs
+			rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
+			rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
+			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
+
+			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+
+			//pink elements
+			fill(255, 130, 197); // pink color
+			stroke(255, 130, 197); // pink color
+			rect(x - (15 * s), y + (95 * s), 5 * s, 20 * s); //left inner ear
+			rect(x + (18 * s), y + (95 * s), 5 * s, 20 * s); //right inner ear
+			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+			fill(255, 0, 0);
+			ellipse(this.xPos, this.getFeetPos(), 20, 20);
+		}
+	},
+	updateAirCondition: function()
 	{
-		stroke(0); //black outline color
-		strokeWeight(5 * s); //black outline width
-		fill(255); // white color
-		
+		onFeet = this.getFeetPos() == floorPos_y;
 
-		//main body
-		rect(x - 20, y + (150 * s), 45, 70); //body
-		rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
-		rect(x - 25, y + (80 * s), 20 * s, 40 * s); //left ear
-		rect(x + 8, y + (80 * s), 20 * s, 40 * s); //right ear
-		rect(x - 15, y + (140 * s), 2 * s, 20 * s); //left eye
-		rect(x + 15, y + (140 * s), 2 * s, 20 * s); //right eye
+		console.log(this.getFeetPos())
+		console.log(floorPos_y)
+		if(onFeet)
+    	{
+			this.userInput.airCondition = "walking";
+    	} 
+		if(!onFeet)
+		{
+			this.yPos += 2;
+		}
 
-		//legs
-		rect(x - 35, y + 200, 15 * s, 20); // front left leg
-		rect(x + 25, y + (190 * s), 15 * s, 30); // front right leg
-		rect(x + 2, y + 195, 0, 25); // leg in middle
-
-		rect(x + 33, y + 188, 15 * s, 15 * s); //tail
-
-		//pink elements
-		fill(255, 130, 197); // pink color
-		stroke(255, 130, 197); // pink color
-		rect(x - 15, y + (95 * s), 5 * s, 20 * s); //left inner ear
-		rect(x + 18, y + (95 * s), 5 * s, 20 * s); //right inner ear
-		rect(x + 1, y + (169 * s), 1 * s, 1 * s); //mouth
-	}
-		
-		
-
+    
+	
 	}
 };
+//--------------------COLLECTED ANIMATION OBJECT (BEAM SHOOTS UP)--------------------//
+collectedAnimations =
+{
+	activeAnimations: [],
+
+	addAnimation: function(xPos, yPos, rectOneColor, rectTwoColor)
+	{
+		animation = 
+		{
+			xPos: xPos,
+			yPos: yPos,
+			rectOneHeight: 20,
+			rectTwoHeight: 0,
+			rectOneWidth: 10,
+			rectTwoWidth: 0,
+			rectOneColor: rectOneColor,
+			rectTwoColor: rectTwoColor,
+			lifeTime: 20
+		};
+		this.activeAnimations.push(animation);
+	},
+
+	animateAnimations: function ()
+	{
+		noStroke();
+		for(i = this.activeAnimations.length - 1; i >= 0; i--)
+		{
+			animation = this.activeAnimations[i];
+			animation.rectOneHeight += 30;
+			animation.rectOneWidth += 2;
+			if(animation.rectOneHeight > 200)
+			{
+				animation.rectTwoHeight = animation.rectOneHeight;
+				animation.rectTwoWidth += 15;
+			}
+
+			fill(animation.rectTwoColor);
+			rect(animation.xPos - (animation.rectTwoWidth / 2),
+				animation.yPos - animation.rectTwoHeight,
+				animation.rectTwoWidth,
+				animation.rectTwoHeight);
+
+			fill(animation.rectOneColor);
+			rect(animation.xPos - (animation.rectOneWidth / 2),
+				animation.yPos - animation.rectOneHeight,
+				animation.rectOneWidth,
+				animation.rectOneHeight);
+
+			if(animation.lifeTime < 0)
+			{
+				this.activeAnimations.splice(i, 1)
+			}
+			else
+			{
+				animation.lifeTime -= 1;
+
+			}
+		}
+	}
+}
 
 //--------------------UPDATE PLAYER INPUT FUNCTION--------------------//
-function keyPressed(){
 
+function keyPressed(){
     //left arrow
 	if(keyCode == 37)
     {
@@ -225,9 +353,6 @@ function keyPressed(){
 
 function keyReleased()
 {
-
-	// if statements to control the animation of the character when
-	// keys are released.
     
     //left arrow
     if(keyCode == 37)
@@ -240,12 +365,11 @@ function keyReleased()
         rabbitCharacter.userInput.direction = "front";
     }
     //space bar
-    else if (keyCode == 32 && gameChar_y == floorPos_y)
+    else if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
     {
-        gameChar_y -= 100
-        rabbitCharacter.userInput.airCondition = "jumping";
+        rabbitCharacter.yPos -= 100;
+		rabbitCharacter.userInput.airCondition = "jumping"
     }
-
 }
 
 
@@ -254,7 +378,6 @@ function setup()
 	createCanvas(1024, 576);
 	floorPos_y = height * 3/4;
 	startGame();
-	
 }
 
 function startGame()
@@ -272,5 +395,14 @@ function startGame()
 
 function draw()
 {
+	background(255);
+	collectedAnimations.animateAnimations()
 	rabbitCharacter.drawRabbit()
+	rabbitCharacter.updateAirCondition()
+	
+}
+
+function mouseClicked()
+{
+	collectedAnimations.addAnimation(mouseX, mouseY, color(255, 215, 0), color(218, 165, 32))
 }
