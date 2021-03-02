@@ -100,7 +100,7 @@ var rabbitCharacter =
 	size: 1,
 	getFeetPos: function ()
 	{
-		return this.yPos + (215 * s)
+		return this.yPos + (215 * this.size)
 	},
 	userInput: {direction: "front", airCondition: "walking"},
 	legData: 
@@ -118,12 +118,21 @@ var rabbitCharacter =
 		currentRotationValue: 0
 	},
 
+	jumpingData:
+	{
+		currentlyJumping: false,
+		goingUpwards: true,
+		currentSpeed: 0,
+		jumpingDuration: 100
+	},
+
 	drawRabbit: function()
 	{
 		s = this.size
 		x = this.xPos
 		y = this.yPos
 
+		//control ears when jumping
 		if(this.earRotationData.currentlyRotating)
 		{
 			if(this.earRotationData.earsGoingDown)
@@ -134,7 +143,7 @@ var rabbitCharacter =
 				}
 				else
 				{
-					this.earRotationData.currentRotationValue += 10;
+					this.earRotationData.currentRotationValue += 5;
 				}
 				
 			}
@@ -147,11 +156,48 @@ var rabbitCharacter =
 				}
 				else
 				{
-					this.earRotationData.currentRotationValue -= 5;
+					this.earRotationData.currentRotationValue -= 2;
 				}
 			}
 		}
+		//control jumping animation
+		if(this.jumpingData.currentlyJumping)
+		{	
+			this.jumpingData.jumpingDuration -= 2
+			if(this.jumpingData.goingUpwards)
+			{
+				this.yPos -= this.jumpingData.currentSpeed
+				if(this.jumpingData.jumpingDuration == 0)
+				{
+					this.jumpingData.goingUpwards = false;
+					this.jumpingData.jumpingDuration = 100;
+				}
+				else
+				{
+					this.jumpingData.currentSpeed = map(this.jumpingData.jumpingDuration * 1.5, 2 * 1.5, 100 * 1.5, 0, 10)
+				}
+			}
+			else
+			{
+				this.yPos += this.jumpingData.currentSpeed
+				if(this.jumpingData.jumpingDuration == 0)
+				{
+					this.jumpingData.currentlyJumping = false;
+					this.jumpingData.jumpingDuration = 100;
+					this.jumpingData.currentSpeed = 0;
+					this.jumpingData.goingUpwards = true;
+					this.userInput.airCondition = "walking";
+				}
+				else
+				{
+					this.jumpingData.currentSpeed = map((100 - this.jumpingData.jumpingDuration) * 1.5, 2 * 1.5, 100 * 1.5, 0, 10)
+				}
+	
+			}
+		}
+	
 
+		//control walking animation
 		if(this.legData.rightFootForward == true && frameCount % 7 == 0)
 			{
 				this.legData.backLegs.outerLegHeight = 28 * s;
@@ -169,6 +215,8 @@ var rabbitCharacter =
 				this.legData.rightFootForward = true;
 			}
 
+		
+		//control graphics of character
 		if(this.userInput.direction == "right")
 			{	
 			this.xPos += 4;
@@ -363,24 +411,6 @@ var rabbitCharacter =
 			fill(255, 0, 0);
 			ellipse(this.xPos, this.getFeetPos(), 20, 20);
 		}
-	},
-	updateAirCondition: function()
-	{
-		onFeet = this.getFeetPos() == floorPos_y;
-
-		console.log(this.getFeetPos())
-		console.log(floorPos_y)
-		if(onFeet)
-    	{
-			this.userInput.airCondition = "walking";
-    	} 
-		if(!onFeet)
-		{
-			this.yPos += 2;
-		}
-
-    
-	
 	}
 };
 //--------------------COLLECTED ANIMATION OBJECT (BEAM SHOOTS UP)--------------------//
@@ -476,7 +506,7 @@ function keyReleased()
     else if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
     {
 		rabbitCharacter.earRotationData.currentlyRotating = true;
-        rabbitCharacter.yPos -= 100;
+        rabbitCharacter.jumpingData.currentlyJumping = true;
 		rabbitCharacter.userInput.airCondition = "jumping"
     }
 }
@@ -507,7 +537,6 @@ function draw()
 	background(255);
 	collectedAnimations.animateAnimations()
 	rabbitCharacter.drawRabbit()
-	rabbitCharacter.updateAirCondition()
 	
 }
 
