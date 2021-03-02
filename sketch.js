@@ -6,66 +6,33 @@ function setup()
 	createCanvas(1024, 576);
 	floorPos_y = height * 3/4;
 	startGame();
-}
-
-function startGame()
-{
-	drawGround.drawLayeredGround(color(19,232,83),
+	drawGround.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
 								color(55,34,25),
 								color(35,21,14),
 								color(13,9,6),
 								floorPos_y,
-								-1000,
-								1000);
+								0,
+								width);
+	// drawGround.drawCurrentGround(currentGround)
+}
+
+function startGame()
+{
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
 	carrots.addCarrots([{xPos: 100, yPos: 400, size: 0.5}, {xPos: 850, yPos: 400, size: 0.5}])
 }
 
-// var levels:
-// {
-// 	one:
-// 	{
-
-// 	},
-// 	two:
-// 	{
-
-// 	},
-// 	three:
-// 	{
-
-// 	},
-// 	four:
-// 	{
-
-// 	},
-// 	five:
-// 	{
-
-// 	},
-// 	size:
-// 	{
-
-// 	},
-// 	seven:
-// 	{
-
-// 	},
-// 	eight:
-// 	{
-
-// 	},
-// 	nine:
-// 	{
-
-// 	},
-// 	ten:
-// 	{
-
-// 	}
-// }
+function draw()
+{
+	fill(255);
+	// rect(0,0,width,(height/4) * 3);
+	collectedAnimations.animateAnimations()
+	rabbitCharacter.drawRabbit()
+	carrots.drawCarrots();
+	
+}
 
 //objects
 
@@ -197,41 +164,47 @@ var drawGround =
 	drawRow: function(lightColor, darkColor, groundStart,groundEnd, yPos)
 	{
 		noStroke();
-		fill(222,184,135);
-		rect(groundStart, yPos, groundEnd, 500)
 
 		while(groundStart < groundEnd)
 		{
+			xRandom = 15
+			yRandom = 10
+			widthRandom = [15, 20]
+			heightRandom = [15, 20]
+			density = 10
 			//draw the grass
 			if(random(0, 1) < 0.5)
 			{
 				fill(lightColor);
-				rect(groundStart + random(-2, 2), yPos + random(-2, 2), 5, 5);
+				rect(groundStart + random(-xRandom, xRandom), yPos + random(-yRandom, yRandom), random(widthRandom[0], widthRandom[1]), random(heightRandom[0], heightRandom[1]));
 			}
 			else
 			{
 				fill(darkColor);
-				rect(groundStart + random(-3, 2), yPos + random(-2, 2), 5, 5);
+				rect(groundStart + random(-xRandom, xRandom), yPos + random(-yRandom, yRandom), random(widthRandom[0], widthRandom[1]), random(heightRandom[0], heightRandom[1]));
 			}
-			groundStart += 1;
+			groundStart += density;
 		}
 	},
 
-	drawLayeredGround: function (grassLight, grassDark, dirtLight, dirtDark, bedRockLight, bedRockDark, yPos, groundStart, groundEnd)
+	generateLayeredGround: function (grassLight, grassDark, dirtLight, dirtDark, bedRockLight, bedRockDark, yPos, groundStart, groundEnd)
 	{
+		fill(dirtDark);
+		rect(groundStart, yPos, groundEnd, 500);
+		yPos += 100;
+		for(i = 0; i < 4; i++)
+		{
+			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos + (i * 10));
+		}
+		yPos -= 55;
 		for(i = 0; i < 5; i++)
 		{
-			this.drawRow(color(grassLight), color(grassDark), groundStart, groundEnd, yPos + (i * 2));
+			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos + (i * 10));
 		}
-		yPos += 15;
-		for(i = 0; i < 100; i++)
+		yPos -= 50;
+		for(i = 0; i < 5; i++)
 		{
-			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos + (i * 5));
-		}
-		yPos += 30;
-		for(i = 0; i < 90; i++)
-		{
-			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos + (i * 5));
+			this.drawRow(color(grassLight), color(grassDark), groundStart, groundEnd, yPos + (i * 10));
 		}
 	}
 }
@@ -657,12 +630,4 @@ function keyReleased()
         rabbitCharacter.jumpingData.currentlyJumping = true;
 		rabbitCharacter.userInput.airCondition = "jumping"
     }
-}
-function draw()
-{
-	background(255);
-	collectedAnimations.animateAnimations()
-	rabbitCharacter.drawRabbit()
-	carrots.drawCarrots();
-	
 }
