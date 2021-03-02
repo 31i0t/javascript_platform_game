@@ -1,12 +1,22 @@
 //global vars
 var floorPos_y;
+var currentGround;
+var scrollPos;
 
 function setup()
 {
 	createCanvas(1024, 576);
 	floorPos_y = height * 3/4;
 	startGame();
-	drawGround.generateLayeredGround(color(19,232,83),
+}
+
+function startGame()
+{
+	scrollPos = 0;
+	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
+	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
+	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.5}, {xPos: 850, yPos: 380, size: 0.5}])
+	currentGround = drawGround.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
 								color(55,34,25),
@@ -15,22 +25,21 @@ function setup()
 								floorPos_y,
 								0,
 								width);
-	// drawGround.drawCurrentGround(currentGround)
-}
-
-function startGame()
-{
-	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrots.addCarrots([{xPos: 100, yPos: 400, size: 0.5}, {xPos: 850, yPos: 400, size: 0.5}])
+	console.log(currentGround.length)
 }
 
 function draw()
 {
-	fill(255);
-	// rect(0,0,width,(height/4) * 3);
+	background(255);
+	push();
+    translate(scrollPos, 0);
 	collectedAnimations.animateAnimations()
-	rabbitCharacter.drawRabbit()
 	carrots.drawCarrots();
+	drawGround.drawCurrentGround(currentGround)
+	pop();
+
+	rabbitCharacter.drawRabbit()
+	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	
 }
 
@@ -87,7 +96,7 @@ carrots =
 		for(i = this.carrotArray.length - 1; i >= 0; i--)
 		{
 			//check if player is close to this carrot
-			if(this.carrotArray[i].inProximity(rabbitCharacter.xPos, rabbitCharacter.getCenterPos()))
+			if(this.carrotArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos()))
 			{
 				if(!this.carrotArray[i].beenCollected)
 				{
@@ -161,27 +170,33 @@ carrots =
 //--------------------DRAW GROUND--------------------//
 var drawGround = 
 {
-	drawRow: function(lightColor, darkColor, groundStart,groundEnd, yPos)
+	drawRow: function(lightColor, darkColor, groundStart,groundEnd, yPos, generatedGround)
 	{
 		noStroke();
 
 		while(groundStart < groundEnd)
 		{
-			xRandom = 15
-			yRandom = 10
-			widthRandom = [15, 20]
-			heightRandom = [15, 20]
-			density = 10
+			xRandom = 50
+			yRandom = 15
+			widthRandom = [80, 100]
+			heightRandom = [80, 100]
+			density = 150
 			//draw the grass
 			if(random(0, 1) < 0.5)
 			{
-				fill(lightColor);
-				rect(groundStart + random(-xRandom, xRandom), yPos + random(-yRandom, yRandom), random(widthRandom[0], widthRandom[1]), random(heightRandom[0], heightRandom[1]));
+				generatedGround.push({color: lightColor, 
+									x: groundStart + random(-xRandom, xRandom), 
+									y: constrain(yPos + random(-yRandom, yRandom), floorPos_y, height), 
+									width: random(widthRandom[0], widthRandom[1]), 
+									height: random(heightRandom[0], heightRandom[1])})
 			}
 			else
 			{
-				fill(darkColor);
-				rect(groundStart + random(-xRandom, xRandom), yPos + random(-yRandom, yRandom), random(widthRandom[0], widthRandom[1]), random(heightRandom[0], heightRandom[1]));
+				generatedGround.push({color: darkColor, 
+									x: groundStart + random(-xRandom, xRandom), 
+									y: constrain(yPos + random(-yRandom, yRandom), floorPos_y, height), 
+									width: random(widthRandom[0], widthRandom[1]),
+									height: random(heightRandom[0], heightRandom[1])})
 			}
 			groundStart += density;
 		}
@@ -189,22 +204,34 @@ var drawGround =
 
 	generateLayeredGround: function (grassLight, grassDark, dirtLight, dirtDark, bedRockLight, bedRockDark, yPos, groundStart, groundEnd)
 	{
-		fill(dirtDark);
-		rect(groundStart, yPos, groundEnd, 500);
+
+		generatedGround = [{color: dirtDark, x: groundStart, y: yPos, width: groundEnd, height: 500}];
 		yPos += 100;
-		for(i = 0; i < 4; i++)
+		for(i = 0; i < 1; i++)
 		{
-			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos + (i * 10));
+			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos + (i * 20), generatedGround);
 		}
 		yPos -= 55;
-		for(i = 0; i < 5; i++)
+		for(i = 0; i < 1; i++)
 		{
-			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos + (i * 10));
+			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos + (i * 20), generatedGround);
 		}
 		yPos -= 50;
-		for(i = 0; i < 5; i++)
+		for(i = 0; i < 1; i++)
 		{
-			this.drawRow(color(grassLight), color(grassDark), groundStart, groundEnd, yPos + (i * 10));
+			this.drawRow(color(grassLight), color(grassDark), groundStart, groundEnd, yPos + (i * 20), generatedGround);
+		}
+
+		return generatedGround
+	},
+
+	drawCurrentGround: function (currentGround)
+	{
+		for(rectIdx = 0; rectIdx < currentGround.length; rectIdx++)
+		{
+			noStroke();
+			fill(currentGround[rectIdx].color)
+			rect(currentGround[rectIdx].x, currentGround[rectIdx].y, currentGround[rectIdx].width, currentGround[rectIdx].height)
 		}
 	}
 }
@@ -212,8 +239,9 @@ var drawGround =
 //--------------------CHARACTER OBJECT--------------------//
 var rabbitCharacter = 
 {
+	realWorldPos: 0,
 	xPos: 512,
-	yPos: 217, 
+	yPos: 209, 
 	size: 1,
 	getFeetPos: function ()
 	{
@@ -340,7 +368,14 @@ var rabbitCharacter =
 		//control graphics of character
 		if(this.userInput.direction == "right")
 			{	
-			this.xPos += 4;
+			if(this.xPos < width * 0.8)
+			{
+				this.xPos += 4;
+			}
+			else
+			{
+				scrollPos -= 4;
+			}
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
@@ -405,7 +440,14 @@ var rabbitCharacter =
 			}
 		else if(this.userInput.direction == "left")
 		{
-			this.xPos -= 5;
+			if(this.xPos > width * 0.2)
+			{
+				this.xPos -= 4;
+			}
+			else
+			{
+				scrollPos += 4;
+			}
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
 			fill(255); // white color
