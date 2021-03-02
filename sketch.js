@@ -18,7 +18,9 @@ function startGame()
 								color(13,9,6),
 								floorPos_y,
 								-1000,
-								1000)
+								1000);
+	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
+	carrots.addCarrots([{xPos: 100, yPos: 400, size: 0.5}, {xPos: 850, yPos: 400, size: 0.5}])
 }
 
 // var levels:
@@ -66,6 +68,128 @@ function startGame()
 // }
 
 //objects
+
+//--------------------CARROT OBJECT--------------------//
+carrots = 
+{
+	carrotScore: 0,
+	innerColor: null,
+	outerColor: null,
+
+	setCarrotColors: function (innerColor, outerColor)
+	{
+		this.innerColor = innerColor;
+		this.outerColor = outerColor;
+	},
+
+	carrot: function (x, y, s)
+	{
+		c = 
+		{
+			x: x,
+			y: y,
+			currentYPos: y,
+			size: s,
+			currentSize: s,
+			downAnimation: true,
+			beenCollected: false,
+			inProximity: function (charX, charY)
+			{
+				carrotX = this.x + (50 * this.size)
+				carrotY = this.currentYPos + (10 * this.size)
+				carrotRadius = this.size * 180
+				return dist(carrotX, carrotY, charX, charY) < carrotRadius / 2
+
+			}
+		}
+		return c
+	},
+
+	carrotArray: [],
+
+	addCarrots: function (carrotsInput)
+	{
+		for(i = 0; i < carrotsInput.length; i++)
+		{
+			this.carrotArray.push(this.carrot(carrotsInput[i].xPos, carrotsInput[i].yPos, carrotsInput[i].size))
+		}
+	},
+
+	drawCarrots: function()
+	{
+		for(i = this.carrotArray.length - 1; i >= 0; i--)
+		{
+			//check if player is close to this carrot
+			if(this.carrotArray[i].inProximity(rabbitCharacter.xPos, rabbitCharacter.getCenterPos()))
+			{
+				if(!this.carrotArray[i].beenCollected)
+				{
+					collectedAnimations.addAnimation(this.carrotArray[i].x, rabbitCharacter.getFeetPos(), color(255, 215, 0), color(218, 165, 32))
+				}
+				
+				this.carrotArray[i].beenCollected = true;
+			}
+
+			//animate carrots if they haven't been collected
+			if(this.carrotArray[i].downAnimation && !this.carrotArray[i].beenCollected)
+			{
+				if(this.carrotArray[i].currentYPos - this.carrotArray[i].y == 10)
+				{
+					this.carrotArray[i].downAnimation = false;
+				}
+				this.carrotArray[i].currentYPos++;
+			}
+			else if (!this.carrotArray[i].downAnimation && !this.carrotArray[i].beenCollected)
+			{
+				if(this.carrotArray[i].y - this.carrotArray[i].currentYPos == 10)
+				{
+					this.carrotArray[i].downAnimation = true;
+				}
+				this.carrotArray[i].currentYPos--;
+			} 
+
+			//animate the carrots once they are collected
+			if(this.carrotArray[i].beenCollected)
+			{
+				if(this.carrotArray[i].currentSize * 1.1 > this.carrotArray[i].size)
+				{
+					this.carrotArray[i].size *= 1.001;
+				}
+				else
+				{
+					this.carrotScore += 1;
+					this.carrotArray.splice(i, 1);
+					continue;
+				}
+			}
+
+			//draw the carrots to the canvas
+			x = this.carrotArray[i].x
+			y = this.carrotArray[i].currentYPos
+			s = this.carrotArray[i].size
+
+			noStroke();
+			fill(this.innerColor);
+
+			//main carrot
+			rect(x + (20 * s), y - (40 * s), 80 * s, 80 * s)
+			rect(x, y, 60 * s, 60 * s)
+			rect(x - (20 * s), y + (40 * s), 40 * s, 40 * s)
+			
+			//carrot stems
+			push();
+			translate(x + (80 * s), y - (30 * s), 20 * s, 20 * s);
+			fill(this.outerColor);
+			angleMode(DEGREES);
+			rect(0, 0, 60 * s, 25 * s);
+			rotate(-45);
+			rect(0, -4 * s, 60 * s, 25 * s);
+			rotate(-45);
+			rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
+			pop();
+		}
+	}
+}
 
 //--------------------DRAW GROUND--------------------//
 var drawGround = 
@@ -121,6 +245,10 @@ var rabbitCharacter =
 	getFeetPos: function ()
 	{
 		return this.yPos + (215 * this.size)
+	},
+	getCenterPos: function ()
+	{
+		return this.yPos + (170 * this.size)
 	},
 	userInput: {direction: "front", airCondition: "walking"},
 	legData: 
@@ -300,7 +428,7 @@ var rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getFeetPos(), 20, 20);
+			ellipse(this.xPos, this.getCenterPos(), 20, 20);
 			}
 		else if(this.userInput.direction == "left")
 		{
@@ -364,7 +492,7 @@ var rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x - (45 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getFeetPos(), 20, 20);
+			ellipse(this.xPos, this.getCenterPos(), 20, 20);
 		}
 		else if(this.userInput.direction == "front")
 		{
@@ -429,7 +557,7 @@ var rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getFeetPos(), 20, 20);
+			ellipse(this.xPos, this.getCenterPos(), 20, 20);
 		}
 	}
 };
@@ -450,7 +578,7 @@ collectedAnimations =
 			rectTwoWidth: 0,
 			rectOneColor: rectOneColor,
 			rectTwoColor: rectTwoColor,
-			lifeTime: 20
+			lifeTime: 92
 		};
 		this.activeAnimations.push(animation);
 	},
@@ -461,12 +589,12 @@ collectedAnimations =
 		for(i = this.activeAnimations.length - 1; i >= 0; i--)
 		{
 			animation = this.activeAnimations[i];
-			animation.rectOneHeight += 30;
+			animation.rectOneHeight += 40;
 			animation.rectOneWidth += 2;
 			if(animation.rectOneHeight > 200)
 			{
 				animation.rectTwoHeight = animation.rectOneHeight;
-				animation.rectTwoWidth += 15;
+				animation.rectTwoWidth += 4;
 			}
 
 			fill(animation.rectTwoColor);
@@ -535,10 +663,6 @@ function draw()
 	background(255);
 	collectedAnimations.animateAnimations()
 	rabbitCharacter.drawRabbit()
+	carrots.drawCarrots();
 	
-}
-
-function mouseClicked()
-{
-	collectedAnimations.addAnimation(mouseX, mouseY, color(255, 215, 0), color(218, 165, 32))
 }
