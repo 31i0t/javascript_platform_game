@@ -25,7 +25,8 @@ function startGame()
 								floorPos_y,
 								0,
 								width);
-	console.log(currentGround.length)
+	clouds.addClouds([{xPos: width/2, yPos: 300, direction: "left"},
+					{xPos: 100, yPos: 400, direction: "right"}])
 }
 
 function draw()
@@ -36,6 +37,7 @@ function draw()
 	collectedAnimations.animateAnimations()
 	carrots.drawCarrots();
 	drawGround.drawCurrentGround(currentGround)
+	clouds.drawClouds();
 	pop();
 
 	rabbitCharacter.drawRabbit()
@@ -44,6 +46,133 @@ function draw()
 }
 
 //objects
+
+//--------------------CLOUDS OBJECT--------------------//
+clouds = 
+{
+	maxLeft: 100,
+	maxRight: 700,
+
+	updateCloudRiders: function ()
+	{
+
+	},
+
+	createCloud: function (xPos, yPos, direction)
+	{
+		c = 
+		{
+			xPos: xPos,
+			yPos: yPos,
+			direction: direction,
+			speed: random(1, 5),
+			realPos: xPos,
+			squares: null
+		}
+		return c
+	},
+
+	generateCloudSquares: function (cloudIdx)
+	{
+		x = 0
+		y = this.cloudsArray[cloudIdx].yPos
+		squares = [];
+		
+		for(i = 0; i < 3; i++)
+		{
+			for(j = 0; j < 5; j++)
+			{
+				cloudSize = 30
+				if(j > 0 && j < 4)
+				{
+					cloudSize = 50
+				}
+				xRandom = (x + random(-10, 10)) + (j * 35)
+				if(j == 0)
+				{
+					xRandom += 20;
+				}
+				yRandom = (y + random(-10, 10)) + (i * 20)
+				cloudSquare = 
+				{
+					x: xRandom,
+					y: yRandom,
+					size: cloudSize
+				}
+				squares.push(cloudSquare)
+			}
+		}
+		return squares
+	},
+
+	cloudsArray: [],
+
+	addClouds: function (inputArray)
+	{
+		for(cloudIdx = 0; cloudIdx < inputArray.length; cloudIdx++)
+		{
+			currentInput = inputArray[cloudIdx];
+			cloud = this.createCloud(currentInput.xPos, currentInput.yPos, currentInput.direction, cloudIdx)
+			this.cloudsArray.push(cloud)
+			cloud.squares = this.generateCloudSquares(this.cloudsArray.length - 1)
+		}
+	},
+
+	drawClouds: function ()
+	{
+		for(cloudIdx = 0; cloudIdx < this.cloudsArray.length; cloudIdx++)
+		{
+			//handle randomized clouds
+			if(frameCount % 60 == 0)
+			{
+				cloudSquares = this.generateCloudSquares(cloudIdx)
+				this.cloudsArray[cloudIdx].squares = cloudSquares
+			}
+
+			//handle cloud animation
+			currentCloudX = this.cloudsArray[cloudIdx].realPos
+			if(this.cloudsArray[cloudIdx].direction == "left")
+			{
+				if(currentCloudX < this.maxLeft)
+				{
+					this.cloudsArray[cloudIdx].direction = "right"
+				}
+				else
+				{
+					this.cloudsArray[cloudIdx].xPos -= this.cloudsArray[cloudIdx].speed
+					this.cloudsArray[cloudIdx].realPos -= this.cloudsArray[cloudIdx].speed;
+				}
+			}
+			else
+			{
+				if(currentCloudX > this.maxRight)
+				{
+					this.cloudsArray[cloudIdx].direction = "left"
+				}
+				else
+				{
+					this.cloudsArray[cloudIdx].xPos += this.cloudsArray[cloudIdx].speed
+					this.cloudsArray[cloudIdx].realPos += this.cloudsArray[cloudIdx].speed;
+				}
+			}
+
+			for(squareIdx = 0; squareIdx < this.cloudsArray[cloudIdx].squares.length; squareIdx++)
+			{
+				currentRect = this.cloudsArray[cloudIdx].squares[squareIdx]
+				// updatedXPos = map(currentRect.x,  this.maxLeft, this.maxRight)
+				push();
+				translate(this.cloudsArray[cloudIdx].xPos, 0);
+				fill(0);
+				noStroke();
+				rect(currentRect.x, currentRect.y, currentRect.size, currentRect.size)
+				pop();
+				noStroke();
+				fill(255, 0, 0);
+				ellipse(this.cloudsArray[cloudIdx].xPos, this.cloudsArray[cloudIdx].yPos, 20, 20)
+			}
+		}
+	}
+}
 
 //--------------------CARROT OBJECT--------------------//
 carrots = 
