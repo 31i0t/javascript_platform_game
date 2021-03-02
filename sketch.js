@@ -42,14 +42,18 @@ function draw()
 	push();
     translate(scrollPos, heightPos);
 	collectedAnimations.animateAnimations()
-	carrots.drawCarrots();
 	drawGround.drawCurrentGround(currentGround)
 	clouds.drawClouds();
 	pop();
 
-
 	rabbitCharacter.drawRabbit()
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
+
+	//draw carrots in front of character
+	push();
+    translate(scrollPos, heightPos);
+	carrots.drawCarrots();
+	pop();
 	
 }
 
@@ -85,7 +89,7 @@ clouds =
 			xPos: xPos,
 			yPos: yPos,
 			direction: direction,
-			speed: random(1, 5),
+			speed: random(1, 4),
 			realPos: xPos,
 			squares: null
 		}
@@ -220,6 +224,7 @@ carrots =
 			currentSize: s,
 			downAnimation: true,
 			beenCollected: false,
+			carrotFloorPosY: y + (s * 102),
 			inProximity: function (charX, charY)
 			{
 				carrotX = this.x + (50 * this.size)
@@ -251,7 +256,7 @@ carrots =
 			{
 				if(!this.carrotArray[i].beenCollected)
 				{
-					collectedAnimations.addAnimation(this.carrotArray[i].x, rabbitCharacter.getFeetPos(), color(255, 215, 0), color(218, 165, 32))
+					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(255, 215, 0), color(218, 165, 32))
 				}
 				
 				this.carrotArray[i].beenCollected = true;
@@ -278,9 +283,9 @@ carrots =
 			//animate the carrots once they are collected
 			if(this.carrotArray[i].beenCollected)
 			{
-				if(this.carrotArray[i].currentSize * 1.1 > this.carrotArray[i].size)
+				if(this.carrotArray[i].currentSize * 2 > this.carrotArray[i].size)
 				{
-					this.carrotArray[i].size *= 1.001;
+					this.carrotArray[i].size *= 1.0075;
 				}
 				else
 				{
@@ -299,6 +304,8 @@ carrots =
 			fill(this.innerColor);
 
 			//main carrot
+			push();
+			translate(-(60 * s), 0)
 			rect(x + (20 * s), y - (40 * s), 80 * s, 80 * s)
 			rect(x, y, 60 * s, 60 * s)
 			rect(x - (20 * s), y + (40 * s), 40 * s, 40 * s)
@@ -313,6 +320,7 @@ carrots =
 			rect(0, -4 * s, 60 * s, 25 * s);
 			rotate(-45);
 			rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
+			pop();
 			pop();
 		}
 	}
