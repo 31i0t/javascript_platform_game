@@ -1,6 +1,26 @@
 //global vars
 var floorPos_y;
 
+function setup()
+{
+	createCanvas(1024, 576);
+	floorPos_y = height * 3/4;
+	startGame();
+}
+
+function startGame()
+{
+	drawGround.drawLayeredGround(color(19,232,83),
+								color(12,86,25),
+								color(77,50,32),
+								color(55,34,25),
+								color(35,21,14),
+								color(13,9,6),
+								floorPos_y,
+								-1000,
+								1000)
+}
+
 // var levels:
 // {
 // 	one:
@@ -510,28 +530,6 @@ function keyReleased()
 		rabbitCharacter.userInput.airCondition = "jumping"
     }
 }
-
-
-function setup()
-{
-	createCanvas(1024, 576);
-	floorPos_y = height * 3/4;
-	startGame();
-}
-
-function startGame()
-{
-	drawGround.drawLayeredGround(color(19,232,83),
-								color(12,86,25),
-								color(77,50,32),
-								color(55,34,25),
-								color(35,21,14),
-								color(13,9,6),
-								floorPos_y,
-								-1000,
-								1000)
-}
-
 function draw()
 {
 	background(255);
