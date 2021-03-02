@@ -2,6 +2,8 @@
 var floorPos_y;
 var currentGround;
 var scrollPos;
+var heightPos;
+var oldX = 0;
 
 function setup()
 {
@@ -12,7 +14,9 @@ function setup()
 
 function startGame()
 {
+	console.log(rabbitCharacter.getCenterPos())
 	scrollPos = 0;
+	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
 	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.5}, {xPos: 850, yPos: 380, size: 0.5}])
@@ -25,20 +29,24 @@ function startGame()
 								floorPos_y,
 								0,
 								width);
-	clouds.addClouds([{xPos: width/2, yPos: 300, direction: "left"},
-					{xPos: 100, yPos: 400, direction: "right"}])
+	clouds.addClouds([{xPos: width/2, yPos: 200, direction: "left"},
+					{xPos: 100, yPos: 0, direction: "right"},
+					{xPos: 100, yPos: -200, direction: "left"},
+					{xPos: 100, yPos: -400, direction: "right"}])
 }
 
 function draw()
 {
-	background(255);
+	background(100, 155, 255);
+
 	push();
-    translate(scrollPos, 0);
+    translate(scrollPos, heightPos);
 	collectedAnimations.animateAnimations()
 	carrots.drawCarrots();
 	drawGround.drawCurrentGround(currentGround)
 	clouds.drawClouds();
 	pop();
+
 
 	rabbitCharacter.drawRabbit()
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
@@ -53,9 +61,21 @@ clouds =
 	maxLeft: 100,
 	maxRight: 700,
 
-	updateCloudRiders: function ()
+	updateCloudRiders: function (cloudIdx)
 	{
+		gameCharXInRange = (rabbitCharacter.realWorldPos > this.cloudsArray[cloudIdx].xPos + 15 &&
+							rabbitCharacter.realWorldPos < this.cloudsArray[cloudIdx].xPos + 175);
 
+		gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (this.cloudsArray[cloudIdx].yPos + heightPos + 60), 20, 20) < 5
+
+		onCloud = gameCharXInRange && gameCharYInRange && rabbitCharacter.jumpingData.goingUpwards == false
+		if(onCloud)
+		{
+			rabbitCharacter.jumpingData.goingUpwards == true;
+			rabbitCharacter.ridingCloudData.onCloud = true;
+			rabbitCharacter.onFloor = true;
+			rabbitCharacter.ridingCloudData.cloudRiding = cloudIdx;
+		}
 	},
 
 	createCloud: function (xPos, yPos, direction)
@@ -122,6 +142,8 @@ clouds =
 	{
 		for(cloudIdx = 0; cloudIdx < this.cloudsArray.length; cloudIdx++)
 		{
+			this.updateCloudRiders(cloudIdx)
+
 			//handle randomized clouds
 			if(frameCount % 60 == 0)
 			{
@@ -139,7 +161,7 @@ clouds =
 				}
 				else
 				{
-					this.cloudsArray[cloudIdx].xPos -= this.cloudsArray[cloudIdx].speed
+					this.cloudsArray[cloudIdx].xPos -= this.cloudsArray[cloudIdx].speed;
 					this.cloudsArray[cloudIdx].realPos -= this.cloudsArray[cloudIdx].speed;
 				}
 			}
@@ -156,19 +178,19 @@ clouds =
 				}
 			}
 
+			//draw out each individual square
 			for(squareIdx = 0; squareIdx < this.cloudsArray[cloudIdx].squares.length; squareIdx++)
 			{
 				currentRect = this.cloudsArray[cloudIdx].squares[squareIdx]
 				// updatedXPos = map(currentRect.x,  this.maxLeft, this.maxRight)
 				push();
 				translate(this.cloudsArray[cloudIdx].xPos, 0);
-				fill(0);
+				fill(255);
 				noStroke();
 				rect(currentRect.x, currentRect.y, currentRect.size, currentRect.size)
 				pop();
 				noStroke();
 				fill(255, 0, 0);
-				ellipse(this.cloudsArray[cloudIdx].xPos, this.cloudsArray[cloudIdx].yPos, 20, 20)
 			}
 		}
 	}
@@ -225,7 +247,7 @@ carrots =
 		for(i = this.carrotArray.length - 1; i >= 0; i--)
 		{
 			//check if player is close to this carrot
-			if(this.carrotArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos()))
+			if(this.carrotArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() + heightPos))
 			{
 				if(!this.carrotArray[i].beenCollected)
 				{
@@ -297,7 +319,7 @@ carrots =
 }
 
 //--------------------DRAW GROUND--------------------//
-var drawGround = 
+drawGround = 
 {
 	drawRow: function(lightColor, darkColor, groundStart,groundEnd, yPos, generatedGround)
 	{
@@ -366,12 +388,13 @@ var drawGround =
 }
 
 //--------------------CHARACTER OBJECT--------------------//
-var rabbitCharacter = 
+rabbitCharacter = 
 {
 	realWorldPos: 0,
 	xPos: 512,
 	yPos: 209, 
 	size: 1,
+	onFloor: true,
 	getFeetPos: function ()
 	{
 		return this.yPos + (215 * this.size)
@@ -404,11 +427,65 @@ var rabbitCharacter =
 		jumpingDuration: 100
 	},
 
+	checkOnSurface: function ()
+	{
+		floorPos = 209 + heightPos
+		onFloor = abs(this.yPos - floorPos) < 8
+		if(onFloor)
+		{
+			rabbitCharacter.onFloor = true;
+			rabbitCharacter.yPos = floorPos;
+		}
+	},
+
+	ridingCloudData:
+	{
+		onCloud: false,
+		cloudRiding: null,
+		jumpingFromCloud: false
+	},
+
 	drawRabbit: function()
 	{
 		s = this.size
 		x = this.xPos
 		y = this.yPos
+		
+		//control cloud moving with char
+		if(this.ridingCloudData.onCloud)
+		{
+			if(clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
+			{
+				if(this.userInput.direction == "front")
+				{
+					this.xPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+					scrollPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+				}
+			}
+			else if(clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
+			{
+				if(this.userInput.direction == "front")
+				{
+					this.xPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+					scrollPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+				}
+			}
+
+			//make player fall off cloud if out of range
+			gameCharXInRange = (this.realWorldPos > clouds.cloudsArray[this.ridingCloudData.cloudRiding].xPos + 15 &&
+								this.realWorldPos < clouds.cloudsArray[this.ridingCloudData.cloudRiding].xPos + 175);
+			gameCharYInRange = abs(this.getFeetPos() - (clouds.cloudsArray[this.ridingCloudData.cloudRiding].yPos + 60), 20, 20) < 10
+
+			if(gameCharXInRange == false || gameCharYInRange == false && this.jumpingFromCloud == false)
+			{
+				this.ridingCloudData.onCloud = false;
+				this.jumpingData.currentlyJumping = true;
+				this.jumpingData.goingUpwards = false;
+				this.userInput.airCondition = "jumping"
+				this.onFloor = false;
+			}
+		}
+
 
 		//control ears when jumping
 		if(this.earRotationData.currentlyRotating)
@@ -444,7 +521,14 @@ var rabbitCharacter =
 			this.jumpingData.jumpingDuration -= 2
 			if(this.jumpingData.goingUpwards)
 			{
-				this.yPos -= this.jumpingData.currentSpeed
+				if(this.getCenterPos() < 200)
+				{
+					heightPos += this.jumpingData.currentSpeed
+				}
+				else
+				{
+					this.yPos -= this.jumpingData.currentSpeed
+				}
 				if(this.jumpingData.jumpingDuration == 0)
 				{
 					this.jumpingData.goingUpwards = false;
@@ -457,9 +541,19 @@ var rabbitCharacter =
 			}
 			else
 			{
-				this.yPos += this.jumpingData.currentSpeed
-				if(this.jumpingData.jumpingDuration == 0)
+				console.log(this.onFloor)
+				if(this.getCenterPos() > 379)
 				{
+					heightPos -= this.jumpingData.currentSpeed
+				}
+				else
+				{
+					this.yPos += this.jumpingData.currentSpeed
+				}
+				this.checkOnSurface()
+				if(this.onFloor)
+				{
+					this.ridingCloudData.jumpingFromCloud = false;
 					this.jumpingData.currentlyJumping = false;
 					this.jumpingData.jumpingDuration = 100;
 					this.jumpingData.currentSpeed = 0;
@@ -492,11 +586,12 @@ var rabbitCharacter =
 				this.legData.frontLegs.innerLegHeight = 34 * s;
 				this.legData.rightFootForward = true;
 			}
+	
 
 		
 		//control graphics of character
 		if(this.userInput.direction == "right")
-			{	
+		{	
 			if(this.xPos < width * 0.8)
 			{
 				this.xPos += 4;
@@ -566,7 +661,7 @@ var rabbitCharacter =
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
 			ellipse(this.xPos, this.getCenterPos(), 20, 20);
-			}
+		}
 		else if(this.userInput.direction == "left")
 		{
 			if(this.xPos > width * 0.2)
@@ -797,8 +892,14 @@ function keyReleased()
     //space bar
     else if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
     {
+		if(rabbitCharacter.ridingCloudData.onCloud)
+		{
+			rabbitCharacter.ridingCloudData.jumpingFromCloud = true;
+			rabbitCharacter.ridingCloudData.onCloud = false;
+		}
 		rabbitCharacter.earRotationData.currentlyRotating = true;
         rabbitCharacter.jumpingData.currentlyJumping = true;
 		rabbitCharacter.userInput.airCondition = "jumping"
+		rabbitCharacter.onFloor = false;
     }
 }
