@@ -83,7 +83,7 @@ canyons =
 			canyonWidth: canyonWidth,
 			checkCollision: function(xPos, yPos)
 			{
-				yInRange = yPos + 10 > floorPos_y
+				yInRange = yPos + 10 > floorPos_y + heightPos
 				xInRange = (xPos < (this.canyonWidth + this.x) && xPos > this.x);
 				return xInRange && yInRange
 			}
@@ -105,7 +105,7 @@ canyons =
 		{
 			if(this.canyonsArray[i].checkCollision(rabbitCharacter.xPos, rabbitCharacter.getFeetPos()))
 			{
-				console.log("collision!")
+				rabbitCharacter.isDead = true;
 			}
 			fill(this.color);
 			rect(this.canyonsArray[i].x, floorPos_y, this.canyonsArray[i].canyonWidth, 400)
@@ -542,6 +542,7 @@ rabbitCharacter =
 	yPos: 209, 
 	size: 1,
 	onFloor: true,
+	isDead: false,
 	getFeetPos: function ()
 	{
 		return this.yPos + (215 * this.size)
@@ -578,7 +579,7 @@ rabbitCharacter =
 	{
 		floorPos = 209 + heightPos
 		onFloor = abs(this.yPos - floorPos) < 8
-		if(onFloor)
+		if(onFloor && this.isDead == false)
 		{
 			rabbitCharacter.onFloor = true;
 			rabbitCharacter.yPos = floorPos;
@@ -597,6 +598,16 @@ rabbitCharacter =
 		s = this.size
 		x = this.xPos
 		y = this.yPos
+
+		//check if rabbit is dead and draw rabbit accordingly
+		if(this.isDead)
+		{
+			this.onFloor = false;
+			this.isDead = true;
+			this.userInput = {direction: "front", airCondition: "jumping"}
+			this.yPos += 5;
+			this.heightPos = 0;
+		}
 		
 		//control cloud moving with char
 		if(this.ridingCloudData.onCloud)
@@ -686,7 +697,7 @@ rabbitCharacter =
 					this.jumpingData.currentSpeed = map(this.jumpingData.jumpingDuration * 1.5, 2 * 1.5, 100 * 1.5, 0, 10)
 				}
 			}
-			else
+			else if(this.isDead == false)
 			{
 				if(this.getCenterPos() > 379)
 				{
@@ -922,16 +933,50 @@ rabbitCharacter =
 			}
 			else if (this.userInput.airCondition == "jumping")
 			{
-				// //back legs
-				// rect(x - (20 * s), y + (215 * s), 15 * s, 15 * s); // front left leg
-				// rect(x + (10 * s), y + (215 * s), 15 * s, 15 * s); // front right leg
-
 				//main body
 				rect(x - (22.5 * s), y + (150 * s), 45 * s, 70 * s); //body
 				rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
-				rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
-				rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
 
+				if(this.isDead)
+				{
+					//left eye (1/2)
+					push();
+					angleMode(DEGREES);
+					translate(x - (25 * s), y + (145 * s));
+					rotate(-45);
+					rect(0, 0, 2 * s, 20 * s);
+					pop();
+
+					//left eye (2/2)
+					push();
+					angleMode(DEGREES);
+					translate(x - (10 * s), y + (143 * s));
+					rotate(45);
+					rect(0, 0, 2 * s, 20 * s);
+					pop();
+
+					//right eye (1/2)
+					push();
+					angleMode(DEGREES);
+					translate(x + (10 * s), y + (145 * s));
+					rotate(-45);
+					rect(0, 0, 2 * s, 20 * s);
+					pop();
+
+					//right eye (2/2)
+					push();
+					angleMode(DEGREES);
+					translate(x + (25 * s), y + (143 * s));
+					rotate(45);
+					rect(0, 0, 2 * s, 20 * s);
+					pop();
+				}
+				else
+				{
+					rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+					rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+				}
+				
 				//front legs
 				rect(x - (35 * s), y + (190 * s), 20 * s, 20 * s); // front left leg
 				rect(x + (15 * s), y + (190 * s), 20 * s, 20 * s); // front right leg
