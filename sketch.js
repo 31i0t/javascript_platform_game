@@ -14,7 +14,6 @@ function setup()
 
 function startGame()
 {
-	console.log(rabbitCharacter.getCenterPos())
 	scrollPos = 0;
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
@@ -33,6 +32,8 @@ function startGame()
 					{xPos: 100, yPos: 0, direction: "right"},
 					{xPos: 100, yPos: -200, direction: "left"},
 					{xPos: 100, yPos: -400, direction: "right"}])
+	mountains.mountainsColors = {sideMountains: color(126,116,116), middleMountain: color(196,182,182), river: color(31,111,139), snowCap: color(255,255,255)}
+	mountains.mountainIndcies = [{xPos: width/2, yPos: 200, scale: 1}]
 }
 
 function draw()
@@ -41,6 +42,7 @@ function draw()
 
 	push();
     translate(scrollPos, heightPos);
+	mountains.drawMountains()
 	collectedAnimations.animateAnimations()
 	drawGround.drawCurrentGround(currentGround)
 	clouds.drawClouds();
@@ -58,6 +60,60 @@ function draw()
 }
 
 //objects
+
+//--------------------MOUNTAINS OBJECT--------------------//
+mountains = 
+{
+	mountainIndcies: [],
+
+	mountainsColors: 
+	{
+		sideMountains: null,
+		middleMountain: null,
+		river: null,
+		snowCap: null
+	},
+
+	drawMountains: function ()
+	{
+		noStroke();
+		for(i = 0; i < this.mountainIndcies.length; i ++)
+		{
+			x = this.mountainIndcies[i].xPos
+			y = this.mountainIndcies[i].yPos
+			s = this.mountainIndcies[i].scale
+			//side mountains
+			fill(this.mountainsColors.sideMountains)
+			triangle(x - (40 * s), y + (100 * s),
+					 x - (80 * s), y + (232 * s), 
+					 x, y + (232 * s))
+			triangle(x + (40 * s), y + (100 * s), 
+					 x, y + (232 * s), 
+					 x + (80 * s), y + (232 * s))
+			//middle mountain
+			fill(this.mountainsColors.middleMountain)
+			triangle(x, y, 
+					 x - (60 * s), y + (232 * s), 
+					 x + (60 * s), y + (232 * s))
+			//snow cap
+			fill(this.mountainsColors.snowCap)
+			triangle(x, y,
+					 x - (15 * s), y + (58 * s),
+					 x + (15 * s), y + (58 * s))
+			//river
+			fill(this.mountainsColors.river)
+			beginShape();
+			vertex(x, y)
+			vertex(x - (5 * s), y + (75 * s));
+			vertex(x - (5 * s), y + (150 * s));
+			vertex(x - (35 * s), y + (232 * s));
+			vertex(x + (10 * s), y + (232 * s));
+			vertex(x + (20 * s), y + (150 * s));
+			vertex(x + (5 * s), y + (75 * s))
+			endShape(CLOSE);   
+		}
+	}
+}
 
 //--------------------CLOUDS OBJECT--------------------//
 clouds = 
@@ -227,7 +283,7 @@ carrots =
 			carrotFloorPosY: y + (s * 102),
 			inProximity: function (charX, charY)
 			{
-				carrotX = this.x + (50 * this.size)
+				carrotX = this.x
 				carrotY = this.currentYPos + (10 * this.size)
 				carrotRadius = this.size * 180
 				return dist(carrotX, carrotY, charX, charY) < carrotRadius / 2
