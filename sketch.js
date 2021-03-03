@@ -32,8 +32,12 @@ function startGame()
 					{xPos: 100, yPos: 0, direction: "right"},
 					{xPos: 100, yPos: -200, direction: "left"},
 					{xPos: 100, yPos: -400, direction: "right"}])
-	mountains.mountainsColors = {sideMountains: color(126,116,116), middleMountain: color(196,182,182), river: color(31,111,139), snowCap: color(255,255,255)}
+	mountains.mountainColors = {sideMountains: color(126,116,116), middleMountain: color(196,182,182), river: color(31,111,139), snowCap: color(255,255,255)}
 	mountains.mountainIndcies = [{xPos: width/2, yPos: 200, scale: 1}]
+	trees.treeColors = {leaves: color(0, 155, 0), trunk: color(120, 100, 40)}
+	trees.treeIndcies = [20, 200, 500]
+	canyons.addCanyons([{xPos: 400, canyonWidth: 100}, {xPos: 600, canyonWidth: 100}])
+	canyons.color = color(0,0,0)
 }
 
 function draw()
@@ -43,8 +47,10 @@ function draw()
 	push();
     translate(scrollPos, heightPos);
 	mountains.drawMountains()
+	trees.drawTrees()
 	collectedAnimations.animateAnimations()
 	drawGround.drawCurrentGround(currentGround)
+	canyons.drawCanyons();
 	clouds.drawClouds();
 	pop();
 
@@ -61,12 +67,89 @@ function draw()
 
 //objects
 
+//--------------------CANYONS OBJECT--------------------//
+
+canyons = 
+{
+	color: null,
+
+	canyonsArray: [],
+
+	createCanyon: function (x, canyonWidth)
+	{
+		c =
+		{
+			x: x,
+			canyonWidth: canyonWidth,
+			checkCollision: function(xPos, yPos)
+			{
+				yInRange = yPos + 10 > floorPos_y
+				xInRange = (xPos < (this.canyonWidth + this.x) && xPos > this.x);
+				return xInRange && yInRange
+			}
+		}
+		return c
+	},
+
+	addCanyons: function (canyonData)
+	{
+		for(i = 0; i < canyonData.length; i++)
+		{
+			this.canyonsArray.push(this.createCanyon(canyonData[i].xPos, canyonData[i].canyonWidth))
+		}
+	},
+
+	drawCanyons: function()
+	{
+		for(i = 0; i < this.canyonsArray.length; i++)
+		{
+			if(this.canyonsArray[i].checkCollision(rabbitCharacter.xPos, rabbitCharacter.getFeetPos()))
+			{
+				console.log("collision!")
+			}
+			fill(this.color);
+			rect(this.canyonsArray[i].x, floorPos_y, this.canyonsArray[i].canyonWidth, 400)
+		}
+	}
+}
+
+//--------------------TREES OBJECT--------------------//
+trees = 
+{
+	treeIndcies: [],
+
+	treeColors: 
+	{
+		leaves: null,
+		trunk: null,
+	},
+
+	drawTrees: function ()
+	{
+		noStroke();
+		for (var i = 0; i < this.treeIndcies.length; i++)
+    	{
+			x = this.treeIndcies[i]
+			fill(this.treeColors.trunk)
+			rect(x, height/2, 60, 150)
+			
+			fill(this.treeColors.leaves)
+			triangle(x - 50, height/2 + 50, 
+					x + 30, height/2 - 50, 
+					x + 110, height/2 + 50)
+			triangle(x - 50, height/2, 
+					x + 30, height/2 - 100, 
+					x + 110, height/2)
+   		}
+	}
+}
+
 //--------------------MOUNTAINS OBJECT--------------------//
 mountains = 
 {
 	mountainIndcies: [],
 
-	mountainsColors: 
+	mountainColors: 
 	{
 		sideMountains: null,
 		middleMountain: null,
@@ -83,7 +166,7 @@ mountains =
 			y = this.mountainIndcies[i].yPos
 			s = this.mountainIndcies[i].scale
 			//side mountains
-			fill(this.mountainsColors.sideMountains)
+			fill(this.mountainColors.sideMountains)
 			triangle(x - (40 * s), y + (100 * s),
 					 x - (80 * s), y + (232 * s), 
 					 x, y + (232 * s))
@@ -91,17 +174,17 @@ mountains =
 					 x, y + (232 * s), 
 					 x + (80 * s), y + (232 * s))
 			//middle mountain
-			fill(this.mountainsColors.middleMountain)
+			fill(this.mountainColors.middleMountain)
 			triangle(x, y, 
 					 x - (60 * s), y + (232 * s), 
 					 x + (60 * s), y + (232 * s))
 			//snow cap
-			fill(this.mountainsColors.snowCap)
+			fill(this.mountainColors.snowCap)
 			triangle(x, y,
 					 x - (15 * s), y + (58 * s),
 					 x + (15 * s), y + (58 * s))
 			//river
-			fill(this.mountainsColors.river)
+			fill(this.mountainColors.river)
 			beginShape();
 			vertex(x, y)
 			vertex(x - (5 * s), y + (75 * s));
@@ -605,7 +688,6 @@ rabbitCharacter =
 			}
 			else
 			{
-				console.log(this.onFloor)
 				if(this.getCenterPos() > 379)
 				{
 					heightPos -= this.jumpingData.currentSpeed
