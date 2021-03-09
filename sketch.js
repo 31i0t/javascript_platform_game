@@ -3,10 +3,10 @@ var floorPos_y;
 var currentGround;
 var scrollPos;
 var heightPos;
-var oldX = 0;
 
 function setup()
 {
+	frameRate(60)
 	createCanvas(1024, 576);
 	floorPos_y = height * 3/4;
 	startGame();
@@ -37,11 +37,26 @@ function startGame()
 	trees.treeColors = {leaves: color(0, 155, 0), trunk: color(120, 100, 40)}
 	trees.treeIndcies = [20, 200, 500]
 	canyons.addCanyons([{xPos: 400, canyonWidth: 100}, {xPos: 600, canyonWidth: 100}])
-	canyons.color = color(0,0,0)
+	canyons.color = color(100, 155, 255)
 }
 
 function draw()
 {
+	//turn this into a helper function with args
+	fR = round(frameRate())
+	if(fR >= 50 && fR <= 80)
+	{
+		console.log("50 - 80")
+	}
+	else if (fR < 50)
+	{
+		console.log("< 50")
+	}
+	else if (fR > 80)
+	{
+		console.log("> 80")
+	}
+	
 	background(100, 155, 255);
 
 	push();
@@ -103,7 +118,7 @@ canyons =
 	{
 		for(i = 0; i < this.canyonsArray.length; i++)
 		{
-			if(this.canyonsArray[i].checkCollision(rabbitCharacter.xPos, rabbitCharacter.getFeetPos()))
+			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()))
 			{
 				rabbitCharacter.isDead = true;
 			}
@@ -391,7 +406,7 @@ carrots =
 		for(i = this.carrotArray.length - 1; i >= 0; i--)
 		{
 			//check if player is close to this carrot
-			if(this.carrotArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() + heightPos))
+			if(this.carrotArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos))
 			{
 				if(!this.carrotArray[i].beenCollected)
 				{
