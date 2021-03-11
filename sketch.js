@@ -19,7 +19,7 @@ function startGame()
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
 	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.5}, {xPos: 850, yPos: 380, size: 0.5}])
-	currentGround = drawGround.generateLayeredGround(color(19,232,83),
+	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
 								color(55,34,25),
@@ -64,7 +64,7 @@ function draw()
 	mountains.drawMountains()
 	trees.drawTrees()
 	collectedAnimations.animateAnimations()
-	drawGround.drawCurrentGround(currentGround)
+	drawTerrain.drawCurrentTerrain(currentGround, [])
 	canyons.drawCanyons();
 	clouds.drawClouds();
 	pop();
@@ -480,34 +480,35 @@ carrots =
 	}
 }
 
-//--------------------DRAW GROUND--------------------//
-drawGround = 
+//--------------------DRAW TERRAIN--------------------//
+drawTerrain = 
 {
-	drawRow: function(lightColor, darkColor, groundStart,groundEnd, yPos, generatedGround)
+	drawRow: function(lightColor, darkColor, groundStart, groundEnd, yPos, generatedTerrain, maxHeight, size)
 	{
 		noStroke();
+		density = size * 1.5
 
 		while(groundStart < groundEnd)
 		{
-			xRandom = 50
-			yRandom = 15
-			widthRandom = [80, 100]
-			heightRandom = [80, 100]
-			density = 150
+			xRandom = size/2
+			yRandom = size/4
+			widthRandom = [size - (size * 0.15), size + (size * 0.15)]
+			heightRandom = [size - (size * 0.15), size + (size * 0.15)]
+
 			//draw the grass
 			if(random(0, 1) < 0.5)
 			{
-				generatedGround.push({color: lightColor, 
+				generatedTerrain.push({color: lightColor, 
 									x: groundStart + random(-xRandom, xRandom), 
-									y: constrain(yPos + random(-yRandom, yRandom), floorPos_y, height), 
+									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, height), 
 									width: random(widthRandom[0], widthRandom[1]), 
 									height: random(heightRandom[0], heightRandom[1])})
 			}
 			else
 			{
-				generatedGround.push({color: darkColor, 
+				generatedTerrain.push({color: darkColor, 
 									x: groundStart + random(-xRandom, xRandom), 
-									y: constrain(yPos + random(-yRandom, yRandom), floorPos_y, height), 
+									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, height), 
 									width: random(widthRandom[0], widthRandom[1]),
 									height: random(heightRandom[0], heightRandom[1])})
 			}
@@ -517,28 +518,40 @@ drawGround =
 
 	generateLayeredGround: function (grassLight, grassDark, dirtLight, dirtDark, bedRockLight, bedRockDark, yPos, groundStart, groundEnd)
 	{
+		maxHeight = yPos
+		generatedGround = [{color: dirtDark, x: groundStart, y: yPos, width: groundEnd - groundStart, height: 500}];
 
-		generatedGround = [{color: dirtDark, x: groundStart, y: yPos, width: groundEnd, height: 500}];
 		yPos += 100;
-		for(i = 0; i < 1; i++)
-		{
-			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos + (i * 20), generatedGround);
-		}
+		this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
+
 		yPos -= 55;
-		for(i = 0; i < 1; i++)
-		{
-			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos + (i * 20), generatedGround);
-		}
+		this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
+
 		yPos -= 50;
-		for(i = 0; i < 1; i++)
-		{
-			this.drawRow(color(grassLight), color(grassDark), groundStart, groundEnd, yPos + (i * 20), generatedGround);
-		}
+		this.drawRow(color(grassLight), grassDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
 
 		return generatedGround
 	},
 
-	drawCurrentGround: function (currentGround)
+	generateLayeredPlatforms: function (grassLight, grassDark, dirtLight, dirtDark, bedRockLight, bedRockDark, platformsInput)
+	{
+		platforms = []
+		for(i = 0; i < platformsInput.length; i++)
+		{
+			maxHeight = platformsInput[i].yPos
+			updatedWidth = platformsInput[i].platformEnd - platformsInput[i].platformStart
+			currentPlatform = [{color: dirtDark, x: platformsInput[i].platformStart, y: platformsInput[i].yPos, width: updatedWidth, height: 50}]
+
+			this.drawRow(bedRockLight, bedRockDark, platformsInput[i].platformStart, platformsInput[i].platformEnd, platformsInput[i].yPos + 25, currentPlatform, maxHeight, 30)
+			this.drawRow(dirtLight, dirtDark, platformsInput[i].platformStart, platformsInput[i].platformEnd, platformsInput[i].yPos + 15, currentPlatform, maxHeight, 30)
+			this.drawRow(grassLight, grassDark, platformsInput[i].platformStart, platformsInput[i].platformEnd, platformsInput[i].yPos, currentPlatform, maxHeight, 30)
+
+			platforms.push(currentPlatform)
+		}
+		return platforms
+	},
+
+	drawCurrentTerrain: function (currentGround, currentPlatforms)
 	{
 		for(rectIdx = 0; rectIdx < currentGround.length; rectIdx++)
 		{
@@ -546,7 +559,18 @@ drawGround =
 			fill(currentGround[rectIdx].color)
 			rect(currentGround[rectIdx].x, currentGround[rectIdx].y, currentGround[rectIdx].width, currentGround[rectIdx].height)
 		}
+
+		for(i = 0; i < currentPlatforms.length; i++)
+		{
+			for(j = 0; j < currentPlatforms[i].length; j++)
+			{
+				noStroke();
+				fill(currentPlatforms[i][j].color)
+				rect(currentPlatforms[i][j].x, currentPlatforms[i][j].y, currentPlatforms[i][j].width, currentPlatforms[i][j].height)
+			}
+		}
 	}
+
 }
 
 //--------------------CHARACTER OBJECT--------------------//
@@ -558,6 +582,7 @@ rabbitCharacter =
 	size: 1,
 	onFloor: true,
 	isDead: false,
+
 	getFeetPos: function ()
 	{
 		return this.yPos + (215 * this.size)
