@@ -18,7 +18,7 @@ function startGame()
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.5}, {xPos: 850, yPos: 380, size: 0.5}])
+	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}])
 	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
@@ -51,6 +51,9 @@ function startGame()
 
 function draw()
 {
+
+	console.log(floorPos_y - 200)
+
 	logFrameRate(50, 80)
 	
 	background(100, 155, 255);
@@ -373,7 +376,7 @@ carrots =
 			currentSize: s,
 			downAnimation: true,
 			beenCollected: false,
-			carrotFloorPosY: y + (s * 102),
+			carrotFloorPosY: y + (s * 150),
 			inProximity: function (charX, charY)
 			{
 				carrotX = this.x
@@ -392,7 +395,7 @@ carrots =
 	{
 		for(i = 0; i < carrotsInput.length; i++)
 		{
-			this.carrotArray.push(this.carrot(carrotsInput[i].xPos, carrotsInput[i].yPos, carrotsInput[i].size))
+			this.carrotArray.push(this.carrot(carrotsInput[i].xPos, carrotsInput[i].yPos + 20, carrotsInput[i].size))
 		}
 	},
 
@@ -414,19 +417,25 @@ carrots =
 			//animate carrots if they haven't been collected
 			if(this.carrotArray[i].downAnimation && !this.carrotArray[i].beenCollected)
 			{
-				if(this.carrotArray[i].currentYPos - this.carrotArray[i].y == 10)
+				if(this.carrotArray[i].currentYPos - this.carrotArray[i].y == 5)
 				{
 					this.carrotArray[i].downAnimation = false;
 				}
-				this.carrotArray[i].currentYPos++;
+				if(frameCount % 3 == 0)
+				{
+					this.carrotArray[i].currentYPos++;
+				}
 			}
 			else if (!this.carrotArray[i].downAnimation && !this.carrotArray[i].beenCollected)
 			{
-				if(this.carrotArray[i].y - this.carrotArray[i].currentYPos == 10)
+				if(this.carrotArray[i].y - this.carrotArray[i].currentYPos == 5)
 				{
 					this.carrotArray[i].downAnimation = true;
 				}
-				this.carrotArray[i].currentYPos--;
+				if(frameCount % 3 == 0)
+				{
+					this.carrotArray[i].currentYPos--;
+				}
 			} 
 
 			//animate the carrots once they are collected
@@ -600,8 +609,8 @@ rabbitCharacter =
 {
 	realWorldPos: 0,
 	xPos: 512,
-	yPos: 209, 
-	size: 1,
+	yPos: 320, 
+	size: 0.5,
 	onFloor: true,
 	isDead: false,
 
@@ -639,7 +648,7 @@ rabbitCharacter =
 
 	checkOnSurface: function ()
 	{
-		floorPos = 209 + heightPos
+		floorPos = 320 + heightPos
 		onFloor = abs(this.yPos - floorPos) < 8
 		if(onFloor && this.isDead == false)
 		{
