@@ -47,6 +47,17 @@ function startGame()
 	trees.treeIndcies = [20, 200, 500]
 	canyons.addCanyons([{xPos: 400, canyonWidth: 100}, {xPos: 600, canyonWidth: 100}])
 	canyons.color = color(100, 155, 255)
+	enemies.enemyColors = {hatTop: color(153, 76, 0),
+		hatBottom: color(102, 51, 0),
+		gunTop: color(128),
+		gunBottom: color(96),
+		innerFoot: color(139,69,19),
+		outerFoot: color(160,82,45),
+		body: color(0, 77, 0),
+		face: color(191, 153, 115),
+		bulletColor: color(69)}
+	enemies.addEnemies([{xPos: 900, yPos: 392, scale: 1, firingFrequency: 100, firingSpeed: 30, maxBulletDistLeft: 100, maxBulletDistRight: 700},
+			{xPos: 420, yPos: 60, scale: 1, firingFrequency: 20, firingSpeed: 10, maxBulletDistLeft: 100, maxBulletDistRight: 700}])
 }
 
 function draw()
@@ -66,6 +77,9 @@ function draw()
 	drawTerrain.drawCurrentTerrain(currentGround, currentPlatforms)
 	canyons.drawCanyons();
 	clouds.drawClouds();
+	enemies.bullets.updateExpiredBullets()
+	enemies.bullets.drawBullets()
+	enemies.drawEnemies()
 	pop();
 
 	rabbitCharacter.drawRabbit()
@@ -353,7 +367,7 @@ clouds =
 }
 
 //--------------------CARROT OBJECT--------------------//
-carrots = 
+carrots = 	
 {
 	carrotScore: 0,
 	innerColor: null,
@@ -620,7 +634,7 @@ rabbitCharacter =
 	},
 	getCenterPos: function ()
 	{
-		return this.yPos + (170 * this.size)
+		return this.yPos + (150 * this.size)
 	},
 	userInput: {direction: "front", airCondition: "walking"},
 	legData: 
@@ -686,7 +700,7 @@ rabbitCharacter =
 		}
 		
 		//control cloud moving with char
-		if(this.ridingCloudData.onCloud)
+		if(this.ridingCloudData.onCloud && this.isDead == false)
 		{
 			if(clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
 			{
@@ -1081,6 +1095,255 @@ rabbitCharacter =
 		}
 	}
 };
+
+//--------------------ENEMIES OBJECT--------------------//
+enemies = 
+{
+
+	enemyColors: 
+	{
+		hatTop: null,
+		hatBottom: null,
+		gunTop: null,
+		gunBottom: null,
+		innerFoot: null,
+		outerFoot: null,
+		body: null,
+		face: null,
+		bulletColor: null
+	},
+
+	createEnemy: function (xPos, yPos, scale, firingFrequency, firingSpeed, maxBulletDistLeft, maxBulletDistRight)
+	{
+		e = 
+		{
+			xPos: xPos,
+			yPos: yPos,
+			isDead: false,
+			scale: scale,
+			direction: null,
+			firingFrequency: firingFrequency,
+			firingSpeed: firingSpeed,
+			maxBulletDistLeft: maxBulletDistLeft,
+			maxBulletDistRight: maxBulletDistRight
+		}
+		return e
+	},
+
+	enemiesArray: [],
+
+	addEnemies: function (enemiesInput)
+	{
+		for(newEnemyIdx = 0; newEnemyIdx < enemiesInput.length; newEnemyIdx++)
+		{
+			enemyInput = enemiesInput[newEnemyIdx]
+			e = this.createEnemy(enemyInput.xPos, enemyInput.yPos, enemyInput.scale, enemyInput.firingFrequency, enemyInput.firingSpeed, enemyInput.maxBulletDistLeft, enemyInput.maxBulletDistRight)
+			this.enemiesArray.push(e)
+			e.direction = this.checkEnemyDirection(this.enemiesArray.length - 1)
+
+		}
+	},
+
+	drawEnemies: function ()
+	{
+		for(enemyIdx = this.enemiesArray.length - 1; enemyIdx >= 0; enemyIdx --)
+		{
+			enemy = this.enemiesArray[enemyIdx]
+
+			//check for whether enemy has been killed
+			if(this.checkDeadEnemy(enemyIdx))
+			{
+				enemy.isDead = true
+			}
+
+			//draw enemy dead animation and control removing enemy from the array
+			if(enemy.isDead)
+			{
+				enemy.yPos += 3;
+			}
+
+			fill(255);
+
+			//update enemy direction
+			if(enemy.isDead == false)
+			{
+				enemy.direction = this.checkEnemyDirection(enemyIdx)
+			}
+			
+			if(enemy.direction == "right")
+			{
+				s = enemy.scale
+
+				//right shooter
+				fill(this.enemyColors.innerFoot)
+				rect(enemy.xPos - (20 * s), enemy.yPos + (15 * s), 12 * s, 25 * s) // inner foot
+				fill(this.enemyColors.body)
+				rect(enemy.xPos - (20 * s), enemy.yPos - (30 * s), 40 * s, 60 * s) // main body
+				fill(this.enemyColors.outerFoot)
+				rect(enemy.xPos + (10 * s), enemy.yPos + (15 * s), 15 * s, 25 * s) // outer foot
+
+				fill(this.enemyColors.face)
+				rect(enemy.xPos - (14 * s), enemy.yPos - (50 * s), 28 * s, 20 * s) // head
+				fill(this.enemyColors.hatBottom)
+				rect(enemy.xPos - (32 * s), enemy.yPos - (59 * s), 60 * s, 9 * s) // hat brim
+				fill(this.enemyColors.hatTop)
+				rect(enemy.xPos - (14 * s), enemy.yPos - (70 * s), 28 * s, 11 * s) // hat top
+
+				fill(this.enemyColors.gunBottom)
+				rect(enemy.xPos - (14 * s), enemy.yPos - (7 * s), 16 * s, 10 * s) // gun handle
+				fill(this.enemyColors.gunTop)
+				rect(enemy.xPos - (30 * s), enemy.yPos - (15 * s), 65 * s, 9 * s) // gun barrel
+			}
+			else if(enemy.direction == "left")
+			{
+				s = enemy.scale
+
+				//left shooter
+				fill(this.enemyColors.innerFoot)
+				rect(enemy.xPos + (8 * s), enemy.yPos + (15 * s), 12 * s, 25 * s) // inner foot
+				fill(this.enemyColors.body)
+				rect(enemy.xPos - (20 * s), enemy.yPos - (30 * s), 40 * s, 60 * s) // main body
+				fill(this.enemyColors.outerFoot)
+				rect(enemy.xPos - (25 * s), enemy.yPos + (15 * s), 15 * s, 25 * s) // outer foot
+
+				fill(this.enemyColors.face)
+				rect(enemy.xPos - (14 * s), enemy.yPos - (50 * s), 28 * s, 20 * s) // head
+				fill(this.enemyColors.hatBottom)
+				rect(enemy.xPos - (28 * s), enemy.yPos - (59 * s), 60 * s, 9 * s) // hat brim
+				fill(this.enemyColors.hatTop)
+				rect(enemy.xPos - (14 * s), enemy.yPos - (70 * s), 28 * s, 11 * s) // hat top
+
+				fill(this.enemyColors.gunBottom)
+				rect(enemy.xPos - (2 * s), enemy.yPos - (7 * s), 16 * s, 10 * s) // gun handle
+				fill(this.enemyColors.gunTop)
+				rect(enemy.xPos - (35 * s), enemy.yPos - (15 * s), 65 * s, 9 * s) // gun barrel
+	
+			}
+
+			//shoot bullets
+			if(frameCount % enemy.firingFrequency == 0 && enemy.isDead == false)
+			{
+				this.bullets.addBullet(enemy.xPos, enemy.yPos - 10, enemy.scale, enemy.direction, enemy.firingSpeed, enemy.maxBulletDistLeft, enemy.maxBulletDistRight)
+			}
+		}
+	},
+
+	checkDeadEnemy: function (enemyIdx)
+	{
+		fill(255, 0, 0)
+
+		enemyInRange = dist(this.enemiesArray[enemyIdx].xPos, this.enemiesArray[enemyIdx].yPos - 60, rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos() - heightPos) < 20
+
+		if(enemyInRange && rabbitCharacter.jumpingData.goingUpwards == false)
+		{
+			rabbitCharacter.earRotationData.currentlyRotating = true;
+			rabbitCharacter.jumpingData.goingUpwards = true;
+			rabbitCharacter.jumpingData.jumpingDuration = 100
+			rabbitCharacter.userInput.airCondition = "jumping"
+			return true
+		}
+		return false
+	},
+
+	checkEnemyDirection: function (enemyIdx)
+	{
+		if(rabbitCharacter.xPos < this.enemiesArray[enemyIdx].xPos)
+		{
+			return "left"
+		}
+		return "right"
+	},
+
+	bullets:
+	{
+		createBullet: function (xPos, yPos, scale, direction, speed, maxDistLeft, maxDistRight)
+		{
+			b = 
+			{
+				xPos: xPos,
+				yPos: yPos,
+				scale: scale,
+				direction: direction,
+				speed: speed,
+				maxDistLeft: maxDistLeft,
+				maxDistRight: maxDistRight
+			}
+			return b
+		},
+
+		bulletsArray: [],
+
+		checkContact: function (bulletX, bulletY)
+		{
+			if(dist(bulletX, bulletY, rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos) < 40)
+			{
+				return true
+			}
+			return false
+		},
+
+		addBullet: function (xPos, yPos, scale, direction, firingSpeed, maxDistLeft, maxDistRight)
+		{
+			b = this.createBullet(xPos, yPos, scale, direction, firingSpeed, maxDistLeft, maxDistRight)
+			this.bulletsArray.push(b)
+		},
+
+		drawBullets: function ()
+		{
+			for(bulletIdx = this.bulletsArray.length - 1; bulletIdx >= 0; bulletIdx--)
+			{
+				bullet = this.bulletsArray[bulletIdx]
+
+				//check if bullets are in contact
+				if(this.checkContact(bullet.xPos, bullet.yPos))
+				{
+					rabbitCharacter.isDead = true;
+					this.bulletsArray.splice(bulletIdx, 1) 
+				}
+
+				fill(255, 0, 0);
+				
+
+				//update bullet position
+				if(bullet.direction == "right")
+				{
+					bullet.xPos += bullet.speed
+					fill(enemies.enemyColors.bulletColor)
+					ellipse(bullet.xPos, bullet.yPos, 12 * bullet.scale, 12 * bullet.scale) // bullet round
+					rect(bullet.xPos - 13, bullet.yPos - (6 * bullet.scale), 12 * bullet.scale, 12 * bullet.scale) // bullet rect 
+
+				}
+				else if(bullet.direction == "left")
+				{
+					bullet.xPos -= bullet.speed
+					fill(enemies.enemyColors.bulletColor)
+					ellipse(bullet.xPos, bullet.yPos, 12 * bullet.scale, 12 * bullet.scale,) // bullet round
+					rect(bullet.xPos, bullet.yPos - (6 * bullet.scale), 12 * bullet.scale, 12 * bullet.scale) // bullet rect 
+				}
+			}
+		},
+
+		updateExpiredBullets: function ()
+		{
+			for(bulletIdx = this.bulletsArray.length - 1; bulletIdx >= 0; bulletIdx--)
+			{
+				bullet = this.bulletsArray[bulletIdx]
+				direction = bullet.direction
+				if(direction == "left" && bullet.xPos < bullet.maxDistLeft)
+				{
+					this.bulletsArray.splice(bulletIdx, 1)
+				}
+				else if(direction == "right" && bullet.xPos > bullet.maxDistRight)
+				{
+					this.bulletsArray.splice(bulletIdx, 1) 
+				}
+			}
+		}
+
+	}
+}
+
+
 //--------------------COLLECTED ANIMATION OBJECT (BEAM SHOOTS UP)--------------------//
 collectedAnimations =
 {
