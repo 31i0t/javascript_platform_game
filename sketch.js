@@ -18,9 +18,12 @@ function startGame()
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrotsArray = [{xPos: 500, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
+	carrotsArray = [{xPos: 300, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
 	carrots.addCarrots(carrotsArray)
 	statsBoard.carrots.thisLevelTotal = carrotsArray.length
+	lives.color = color(255, 0, 0)
+	heartsArray = [{xPos: 250, yPos: 380, size: 0.3}, {xPos: 20, yPos: 380, size: 0.3}]
+	lives.addHearts(heartsArray)
 	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
@@ -90,19 +93,147 @@ function draw()
 	rabbitCharacter.drawRabbit()
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 
-	//draw carrots in front of character
+	//draw collectables in front of character
 	push();
     translate(scrollPos, heightPos);
 	carrots.drawCarrots();
+	lives.drawHearts();
 	pop();
 
 	statsBoard.drawBoard()
 	statsBoard.drawCarrotsToStats()
+	statsBoard.drawHeartsToStats()
 	
 }
 
 //objects
 
+
+//--------------------LIVES OBJECT--------------------//
+lives = 
+{
+	color: null,
+
+	heart: function (x, y, s)
+	{
+		h = 
+		{
+			x: x,
+			y: y,
+			currentYPos: y,
+			size: s,
+			currentSize: s,
+			downAnimation: true,
+			beenCollected: false,
+			heartFloorPosY: y + (s * 150),
+			inProximity: function (charX, charY)
+			{
+				heartX = this.x
+				heartY = this.currentYPos + (10 * this.size)
+				heartRadius = this.size * 180
+				return dist(heartX, heartY, charX, charY) < heartRadius / 2
+
+			}
+		}
+		return h
+	},
+
+	heartsArray: [],
+
+	addHearts: function (heartsInput)
+	{
+		for(i = 0; i < heartsInput.length; i++)
+		{
+			this.heartsArray.push(this.heart(heartsInput[i].xPos, heartsInput[i].yPos + 20, heartsInput[i].size))
+		}
+	},
+
+	drawHearts: function()
+	{
+		for(i = this.heartsArray.length - 1; i >= 0; i--)
+		{
+			//check if player is close to this heart
+
+			if(this.heartsArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos))
+			{
+				if(!this.heartsArray[i].beenCollected)
+				{
+					collectedAnimations.addAnimation(this.heartsArray[i].x, this.heartsArray[i].heartFloorPosY, color(196, 58, 30), color(150, 24, 0))
+
+				}
+				
+				this.heartsArray[i].beenCollected = true;
+			}
+
+			// animate hearts if they haven't been collected
+			if(this.heartsArray[i].downAnimation && !this.heartsArray[i].beenCollected)
+			{
+				if(this.heartsArray[i].currentYPos - this.heartsArray[i].y == 5)
+				{
+					this.heartsArray[i].downAnimation = false;
+				}
+				if(frameCount % 3 == 0)
+				{
+					this.heartsArray[i].currentYPos++;
+				}
+			}
+			else if (!this.heartsArray[i].downAnimation && !this.heartsArray[i].beenCollected)
+			{
+				if(this.heartsArray[i].y - this.heartsArray[i].currentYPos == 5)
+				{
+					this.heartsArray[i].downAnimation = true;
+				}
+				if(frameCount % 3 == 0)
+				{
+					this.heartsArray[i].currentYPos--;
+				}
+			} 
+
+			//animate the hearts once they are collected
+			if(this.heartsArray[i].beenCollected)
+			{
+				if(this.heartsArray[i].currentSize * 2 > this.heartsArray[i].size)
+				{
+					this.heartsArray[i].size *= 1.0075;
+				}
+				else
+				{
+					h = this.heartsArray[i]
+					statsBoard.heartsToStatsArray.push({xPos: h.x + scrollPos, yPos: h.y, size: h.size, lifeSpan: 100,
+						xUpdate: abs(h.x - (statsBoard.heartData.xPos - scrollPos)) / 100, yUpdate: abs(h.y - statsBoard.heartData.yPos) / 100, sizeUpdate: (statsBoard.heartData.size - h.size) / 100})
+					this.heartsArray.splice(i, 1);
+					continue;
+				}
+			}
+
+			//draw the hearts to the canvas
+			x = this.heartsArray[i].x
+			y = this.heartsArray[i].currentYPos
+			s = this.heartsArray[i].size
+
+			noStroke();
+			fill(this.color)
+
+			push();
+			translate(-(50 * s), -(25 * s));
+			rect(x, y, 100 * s, 40 * s) // main
+
+			rect(x + (10 * s), y - (10 * s), 35 * s, 20 * s) // top left
+			rect(x + (20 * s), y - (15 * s), 15 * s, 15 * s) // very top left
+
+			rect(x + (55 * s), y - (10 * s), 35 * s, 20 * s) // top right
+			rect(x + (65 * s), y - (15 * s), 15 * s, 15 * s) // very top right
+
+
+			rect(x + (15 * s), y + (30 * s), 70 * s, 20 * s) // bottom
+
+			rect(x + (30 * s), y + (40 * s), 40 * s, 20 * s) // very bottom
+			rect(x + (43 * s), y + (55 * s), 15 * s, 15 * s) // very very bottom
+			pop();
+
+		}
+	}
+}
 
 //--------------------STATS BOARD OBJECT--------------------//
 statsBoard = 
@@ -111,9 +242,8 @@ statsBoard =
 
 	lives:
 	{
-		thisLevel: 0,
-		thisLevelTotal: 0,
-		total: 0
+		current: 3,
+		total: 5
 	},
 
 	enemies:
@@ -128,6 +258,20 @@ statsBoard =
 		thisLevel: 0,
 		thisLevelTotal: 0,
 		total: 0
+	},
+
+	carrotData:
+	{
+		xPos: 42,
+		yPos: 70,
+		size: 0.11
+	},
+
+	heartData:
+	{
+		xPos: 130,
+		yPos: 43,
+		size: 0.2
 	},
 
 	carrotsToStatsArray: [],
@@ -151,6 +295,27 @@ statsBoard =
 		}
 	},
 
+	heartsToStatsArray: [],
+
+	drawHeartsToStats: function ()
+	{
+		for(i = 0; i < this.heartsToStatsArray.length; i++)
+		{
+			currentHeart = this.heartsToStatsArray[i]
+			currentHeart.xPos -= currentHeart.xUpdate
+			currentHeart.yPos -= currentHeart.yUpdate
+			currentHeart.size += currentHeart.sizeUpdate
+			this.drawHeart(currentHeart.xPos, currentHeart.yPos, currentHeart.size)
+			currentHeart.lifeSpan -= 1
+			if(currentHeart.lifeSpan <= 0)
+			{
+				statsBoard.score += 50;
+				statsBoard.lives.current += 1;
+				this.heartsToStatsArray.splice(i, 1)
+			}
+		}
+	},
+
 	drawBoard: function ()
 	{
 		textSize(20)
@@ -167,14 +332,16 @@ statsBoard =
 		textStyle(NORMAL)
 		text(this.carrots.thisLevel + " / " + this.carrots.thisLevelTotal, 60, 78)
 		text(this.enemies.thisLevel + " / " + this.enemies.thisLevelTotal, 150, 78)
+		text(this.lives.current + " / " + this.lives.total, 150, 51)
 
 
 
 
 
 		// DRAW CARROT SYMBOL
-		fill(carrots.innerColor)
-		this.drawCarrot(42, 70, 0.11)
+		this.drawCarrot(this.carrotData.xPos, this.carrotData.yPos, this.carrotData.size)
+		// DRAW LIVES SYMBOL
+		this.drawHeart(this.heartData.xPos, this.heartData.yPos, this.heartData.size)
 
 		//DRAW ENEMY SYMBOL
 		x = 130
@@ -224,6 +391,27 @@ statsBoard =
 		rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
 		pop();
 		pop();
+	},
+
+	drawHeart: function(x, y, s)
+	{
+		fill(lives.color)
+		push();
+		translate(-(50 * s), -(25 * s));
+		rect(x, y, 100 * s, 40 * s) // main
+
+		rect(x + (10 * s), y - (10 * s), 35 * s, 20 * s) // top left
+		rect(x + (20 * s), y - (15 * s), 15 * s, 15 * s) // very top left
+
+		rect(x + (55 * s), y - (10 * s), 35 * s, 20 * s) // top right
+		rect(x + (65 * s), y - (15 * s), 15 * s, 15 * s) // very top right
+
+
+		rect(x + (15 * s), y + (30 * s), 70 * s, 20 * s) // bottom
+
+		rect(x + (30 * s), y + (40 * s), 40 * s, 20 * s) // very bottom
+		rect(x + (43 * s), y + (55 * s), 15 * s, 15 * s) // very very bottom
+		pop();
 	}
 }
 
@@ -262,9 +450,10 @@ canyons =
 	{
 		for(i = 0; i < this.canyonsArray.length; i++)
 		{
-			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()))
+			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()) && rabbitCharacter.isDead == false)
 			{
 				rabbitCharacter.isDead = true;
+				statsBoard.lives.current -= 1
 			}
 			fill(this.color);
 			rect(this.canyonsArray[i].x, floorPos_y, this.canyonsArray[i].canyonWidth, 400)
@@ -500,7 +689,6 @@ clouds =
 //--------------------CARROT OBJECT--------------------//
 carrots = 	
 {
-	carrotScore: 0,
 	innerColor: null,
 	outerColor: null,
 
@@ -593,10 +781,9 @@ carrots =
 				}
 				else
 				{
-					this.carrotScore += 1;
 					c = this.carrotArray[i]
 					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, yPos: c.y, size: c.size, lifeSpan: 100,
-														xUpdate: abs(c.x - (42 - scrollPos)) / 100, yUpdate: abs(c.y - 70) / 100, sizeUpdate: (0.11 - c.size) / 100})
+														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / 100, yUpdate: abs(c.y - statsBoard.carrotData.yPos) / 100, sizeUpdate: (statsBoard.carrotData.size - c.size) / 100})
 					this.carrotArray.splice(i, 1);
 					continue;
 				}
@@ -1438,6 +1625,7 @@ enemies =
 				if(this.checkContact(bullet.xPos, bullet.yPos))
 				{
 					rabbitCharacter.isDead = true;
+					statsBoard.lives.current -= 1
 					this.bulletsArray.splice(bulletIdx, 1) 
 				}
 
