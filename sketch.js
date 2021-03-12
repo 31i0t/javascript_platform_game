@@ -18,7 +18,9 @@ function startGame()
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrots.addCarrots([{xPos: 100, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}])
+	carrotsArray = [{xPos: 500, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
+	carrots.addCarrots(carrotsArray)
+	statsBoard.carrots.thisLevelTotal = carrotsArray.length
 	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
@@ -56,8 +58,11 @@ function startGame()
 		body: color(0, 77, 0),
 		face: color(191, 153, 115),
 		bulletColor: color(69)}
-	enemies.addEnemies([{xPos: 900, yPos: 392, scale: 1, firingFrequency: 100, firingSpeed: 30, maxBulletDistLeft: 100, maxBulletDistRight: 700},
-			{xPos: 420, yPos: 60, scale: 1, firingFrequency: 20, firingSpeed: 10, maxBulletDistLeft: 100, maxBulletDistRight: 700}])
+	enemiesArray = [{xPos: 900, yPos: 392, scale: 1, firingFrequency: 100, firingSpeed: 30, maxBulletDistLeft: 100, maxBulletDistRight: 700},
+					{xPos: 420, yPos: 60, scale: 1, firingFrequency: 20, firingSpeed: 10, maxBulletDistLeft: 100, maxBulletDistRight: 700}]
+	enemies.addEnemies(enemiesArray)
+	statsBoard.enemies.thisLevelTotal = enemiesArray.length
+	
 }
 
 function draw()
@@ -90,13 +95,139 @@ function draw()
     translate(scrollPos, heightPos);
 	carrots.drawCarrots();
 	pop();
+
+	statsBoard.drawBoard()
+	statsBoard.drawCarrotsToStats()
 	
 }
 
 //objects
 
-//--------------------CANYONS OBJECT--------------------//
 
+//--------------------STATS BOARD OBJECT--------------------//
+statsBoard = 
+{
+	score: 0,
+
+	lives:
+	{
+		thisLevel: 0,
+		thisLevelTotal: 0,
+		total: 0
+	},
+
+	enemies:
+	{
+		thisLevel: 0,
+		thisLevelTotal: 0,
+		total: 0
+	},
+
+	carrots:
+	{
+		thisLevel: 0,
+		thisLevelTotal: 0,
+		total: 0
+	},
+
+	carrotsToStatsArray: [],
+
+	drawCarrotsToStats: function ()
+	{
+		for(i = 0; i < this.carrotsToStatsArray.length; i++)
+		{
+			currentCarrot = this.carrotsToStatsArray[i]
+			currentCarrot.xPos -= currentCarrot.xUpdate
+			currentCarrot.yPos -= currentCarrot.yUpdate
+			currentCarrot.size += currentCarrot.sizeUpdate
+			this.drawCarrot(currentCarrot.xPos, currentCarrot.yPos, currentCarrot.size)
+			currentCarrot.lifeSpan -= 1
+			if(currentCarrot.lifeSpan <= 0)
+			{
+				statsBoard.score += 50;
+				statsBoard.carrots.thisLevel += 1;
+				this.carrotsToStatsArray.splice(i, 1)
+			}
+		}
+	},
+
+	drawBoard: function ()
+	{
+		textSize(20)
+		textStyle(BOLD)
+		textFont('serif')
+		noStroke()
+
+		fill(255)
+		rect(20, 20, 200, 80, 15) //main board
+
+		fill(0)
+		text(this.score, 35, 50) // score
+		fill(120)
+		textStyle(NORMAL)
+		text(this.carrots.thisLevel + " / " + this.carrots.thisLevelTotal, 60, 78)
+		text(this.enemies.thisLevel + " / " + this.enemies.thisLevelTotal, 150, 78)
+
+
+
+
+
+		// DRAW CARROT SYMBOL
+		fill(carrots.innerColor)
+		this.drawCarrot(42, 70, 0.11)
+
+		//DRAW ENEMY SYMBOL
+		x = 130
+		y = 74
+		s = 0.2
+		fill(enemies.enemyColors.innerFoot)
+		rect(x - (20 * s), y + (15 * s), 12 * s, 25 * s) // inner foot
+		fill(enemies.enemyColors.body)
+		rect(x - (20 * s), y - (30 * s), 40 * s, 60 * s) // main body
+		fill(enemies.enemyColors.outerFoot)
+		rect(x + (10 * s), y + (15 * s), 15 * s, 25 * s) // outer foot
+
+		fill(enemies.enemyColors.face)
+		rect(x - (14 * s), y - (50 * s), 28 * s, 20 * s) // head
+		fill(enemies.enemyColors.hatBottom)
+		rect(x - (32 * s), y - (59 * s), 60 * s, 9 * s) // hat brim
+		fill(enemies.enemyColors.hatTop)
+		rect(x - (14 * s), y - (70 * s), 28 * s, 11 * s) // hat top
+
+		fill(enemies.enemyColors.gunBottom)
+		rect(x - (14 * s), y - (7 * s), 16 * s, 10 * s) // gun handle
+		fill(enemies.enemyColors.gunTop)
+		rect(x - (30 * s), y - (15 * s), 65 * s, 9 * s) // gun barrel
+
+
+	},
+
+	drawCarrot: function (x, y, s)
+	{
+		fill(carrots.innerColor)
+		//main carrot
+		push();
+		translate(-(60 * s), 0)
+		rect(x + (20 * s), y - (40 * s), 80 * s, 80 * s)
+		rect(x, y, 60 * s, 60 * s)
+		rect(x - (20 * s), y + (40 * s), 40 * s, 40 * s)
+		
+		//carrot stems
+		push();
+		translate(x + (80 * s), y - (30 * s), 20 * s, 20 * s);
+		fill(carrots.outerColor);
+		angleMode(DEGREES);
+		rect(0, 0, 60 * s, 25 * s);
+		rotate(-45);
+		rect(0, -4 * s, 60 * s, 25 * s);
+		rotate(-45);
+		rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
+		pop();
+		pop();
+	}
+}
+
+//--------------------CANYONS OBJECT--------------------//
 canyons = 
 {
 	color: null,
@@ -423,6 +554,7 @@ carrots =
 				if(!this.carrotArray[i].beenCollected)
 				{
 					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(255, 215, 0), color(218, 165, 32))
+
 				}
 				
 				this.carrotArray[i].beenCollected = true;
@@ -462,6 +594,9 @@ carrots =
 				else
 				{
 					this.carrotScore += 1;
+					c = this.carrotArray[i]
+					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, yPos: c.y, size: c.size, lifeSpan: 100,
+														xUpdate: abs(c.x - (42 - scrollPos)) / 100, yUpdate: abs(c.y - 70) / 100, sizeUpdate: (0.11 - c.size) / 100})
 					this.carrotArray.splice(i, 1);
 					continue;
 				}
@@ -1240,6 +1375,11 @@ enemies =
 			rabbitCharacter.jumpingData.goingUpwards = true;
 			rabbitCharacter.jumpingData.jumpingDuration = 100
 			rabbitCharacter.userInput.airCondition = "jumping"
+
+			//update scoreboard
+			statsBoard.score += 100
+			statsBoard.enemies.thisLevel += 1;
+
 			return true
 		}
 		return false
@@ -1247,7 +1387,7 @@ enemies =
 
 	checkEnemyDirection: function (enemyIdx)
 	{
-		if(rabbitCharacter.xPos < this.enemiesArray[enemyIdx].xPos)
+		if(rabbitCharacter.realWorldPos < this.enemiesArray[enemyIdx].xPos)
 		{
 			return "left"
 		}
