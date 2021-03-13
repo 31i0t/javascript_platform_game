@@ -18,11 +18,11 @@ function startGame()
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrotsArray = [{xPos: 300, yPos: 380, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
+	carrotsArray = [{xPos: 250, yPos: 50, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
 	carrots.addCarrots(carrotsArray)
 	statsBoard.carrots.thisLevelTotal = carrotsArray.length
 	lives.color = color(255, 0, 0)
-	heartsArray = [{xPos: 250, yPos: 380, size: 0.3}, {xPos: 20, yPos: 380, size: 0.3}]
+	heartsArray = [{xPos: 450, yPos: 200, size: 0.3}, {xPos: 20, yPos: 380, size: 0.3}]
 	lives.addHearts(heartsArray)
 	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
@@ -42,7 +42,7 @@ function startGame()
 								color(35,21,14),
 								color(13,9,6),
 								platformsData)
-	clouds.addClouds([{xPos: width/2, yPos: 200, direction: "left"},
+	clouds.addClouds([{xPos: 400, yPos: 200, direction: "left"},
 					{xPos: 100, yPos: 0, direction: "right"},
 					{xPos: 100, yPos: -200, direction: "left"},
 					{xPos: 100, yPos: -400, direction: "right"}])
@@ -61,8 +61,7 @@ function startGame()
 		body: color(0, 77, 0),
 		face: color(191, 153, 115),
 		bulletColor: color(69)}
-	enemiesArray = [{xPos: 900, yPos: 392, scale: 1, firingFrequency: 100, firingSpeed: 30, maxBulletDistLeft: 100, maxBulletDistRight: 700},
-					{xPos: 420, yPos: 60, scale: 1, firingFrequency: 20, firingSpeed: 10, maxBulletDistLeft: 100, maxBulletDistRight: 700}]
+	enemiesArray = [{xPos: 450, yPos: 200, scale: 1, firingFrequency: 100, firingSpeed: 20, maxBulletDistLeft: 100, maxBulletDistRight: 700}]
 	enemies.addEnemies(enemiesArray)
 	statsBoard.enemies.thisLevelTotal = enemiesArray.length
 	
@@ -70,21 +69,18 @@ function startGame()
 
 function draw()
 {
-
-	console.log(floorPos_y - 200)
-
-	logFrameRate(50, 80)
-	
+	// logFrameRate(50, 80)
+	checkOutOfBounds()
 	background(100, 155, 255);
 
 	push();
     translate(scrollPos, heightPos);
 	mountains.drawMountains()
 	trees.drawTrees()
-	collectedAnimations.animateAnimations()
 	drawTerrain.drawCurrentTerrain(currentGround, currentPlatforms)
 	canyons.drawCanyons();
 	clouds.drawClouds();
+	collectedAnimations.animateAnimations()
 	enemies.bullets.updateExpiredBullets()
 	enemies.bullets.drawBullets()
 	enemies.drawEnemies()
@@ -97,17 +93,124 @@ function draw()
 	push();
     translate(scrollPos, heightPos);
 	carrots.drawCarrots();
+	child.drawChild();
 	lives.drawHearts();
 	pop();
 
 	statsBoard.drawBoard()
 	statsBoard.drawCarrotsToStats()
 	statsBoard.drawHeartsToStats()
+	statsBoard.drawChildrenToStats()
 	
 }
 
 //objects
+//--------------------CHILD OBJECT--------------------//
+// levels = 
+// {
 
+// }
+
+//--------------------CHILD OBJECT--------------------//
+child = 
+{
+	xPos: 200,
+	yPos: 400,
+	size: 0.3,
+	originalSize: 0.3,
+	drawChildBool: true,
+	isFound: false,
+
+	getFeetPos: function ()
+	{
+		return this.yPos + (215 * this.size)
+	},
+	
+	drawChild: function ()
+	{
+		this.checkChildIsFound()
+
+		if(this.isFound && this.drawChildBool)
+		{
+			if(this.originalSize * 2 > this.size)
+			{
+				this.size *= 1.0075;
+			}
+			else
+			{
+				duration = 50 // controls duration in # of frames of collectables going to stats board
+				statsBoard.childrenToStatsArray.push({xPos: this.xPos + scrollPos, yPos: this.yPos + heightPos, size: this.size, lifeSpan: duration,
+							xUpdate: abs(this.xPos - (statsBoard.childrenData.xPos - scrollPos)) / duration, yUpdate: abs((this.yPos + heightPos) - statsBoard.childrenData.yPos) / duration, sizeUpdate: (statsBoard.childrenData.size - this.size) / duration})
+				this.drawChildBool = false;
+			}
+		}
+
+		x = this.xPos
+		y = this.yPos
+		s = this.size
+
+		if(this.drawChildBool)
+		{
+			stroke(0); //black outline color
+			strokeWeight(5 * s); //black outline width
+			fill(205,133,63); // body color
+
+			push();
+			translate(0, -160 * s)
+
+			push();
+			translate(x - (25 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+			fill(160,82,45); // light color
+			stroke(160,82,45); // light color
+			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+			pop();
+
+			push();
+			translate(x + (8 * s) + ((20 * s) / 2), 
+					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+			fill(160,82,45); // light color
+			stroke(160,82,45); // light color
+			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+			pop();
+
+			//main body
+			rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+			rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+			rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+			rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+			//legs
+			rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
+			rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
+			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
+			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+
+			fill(160,82,45); // light color
+			stroke(160,82,45); // light color
+			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+
+			pop();
+		}
+	},
+
+	checkChildIsFound: function ()
+	{
+		charX = rabbitCharacter.realWorldPos
+		charY = rabbitCharacter.getCenterPos() - heightPos
+		childRadius = this.size * 180
+		childIsFound =  dist(this.xPos, this.yPos, charX, charY) < 50 / 2
+
+		if(childIsFound && this.isFound == false)
+		{
+			this.isFound = true;
+			collectedAnimations.addAnimation(this.xPos, this.getFeetPos(), color(196, 58, 30), color(150, 24, 0), {x: this.xPos})
+		}
+
+	}
+}
 
 //--------------------LIVES OBJECT--------------------//
 lives = 
@@ -122,7 +225,7 @@ lives =
 			y: y,
 			currentYPos: y,
 			size: s,
-			currentSize: s,
+			originalSize: s,
 			downAnimation: true,
 			beenCollected: false,
 			heartFloorPosY: y + (s * 150),
@@ -158,7 +261,7 @@ lives =
 			{
 				if(!this.heartsArray[i].beenCollected)
 				{
-					collectedAnimations.addAnimation(this.heartsArray[i].x, this.heartsArray[i].heartFloorPosY, color(196, 58, 30), color(150, 24, 0))
+					collectedAnimations.addAnimation(this.heartsArray[i].x, this.heartsArray[i].heartFloorPosY, color(196, 58, 30), color(150, 24, 0), this.heartsArray[i])
 
 				}
 				
@@ -192,15 +295,16 @@ lives =
 			//animate the hearts once they are collected
 			if(this.heartsArray[i].beenCollected)
 			{
-				if(this.heartsArray[i].currentSize * 2 > this.heartsArray[i].size)
+				if(this.heartsArray[i].originalSize * 2 > this.heartsArray[i].size)
 				{
 					this.heartsArray[i].size *= 1.0075;
 				}
 				else
 				{
 					h = this.heartsArray[i]
-					statsBoard.heartsToStatsArray.push({xPos: h.x + scrollPos, yPos: h.y, size: h.size, lifeSpan: 100,
-						xUpdate: abs(h.x - (statsBoard.heartData.xPos - scrollPos)) / 100, yUpdate: abs(h.y - statsBoard.heartData.yPos) / 100, sizeUpdate: (statsBoard.heartData.size - h.size) / 100})
+					duration = 50 // controls duration in # of frames of collectables going to stats board
+					statsBoard.heartsToStatsArray.push({xPos: h.x + scrollPos, yPos: h.y + heightPos, size: h.size, lifeSpan: duration,
+						xUpdate: abs(h.x - (statsBoard.heartData.xPos - scrollPos)) / duration, yUpdate: abs((h.y + heightPos) - statsBoard.heartData.yPos) / duration, sizeUpdate: (statsBoard.heartData.size - h.size) / duration})
 					this.heartsArray.splice(i, 1);
 					continue;
 				}
@@ -260,6 +364,12 @@ statsBoard =
 		total: 0
 	},
 
+	children:
+	{
+		current: 0,
+		total: 5
+	},
+
 	carrotData:
 	{
 		xPos: 42,
@@ -272,6 +382,13 @@ statsBoard =
 		xPos: 130,
 		yPos: 43,
 		size: 0.2
+	},
+
+	childrenData:
+	{
+		xPos: 41,
+		yPos: 100,
+		size: 0.15
 	},
 
 	carrotsToStatsArray: [],
@@ -316,6 +433,27 @@ statsBoard =
 		}
 	},
 
+	childrenToStatsArray: [],
+
+	drawChildrenToStats: function ()
+	{
+		for(i = 0; i < this.childrenToStatsArray.length; i++)
+		{
+			currentChild = this.childrenToStatsArray[i]
+			currentChild.xPos -= currentChild.xUpdate
+			currentChild.yPos -= currentChild.yUpdate
+			currentChild.size += currentChild.sizeUpdate
+			this.drawChild(currentChild.xPos, currentChild.yPos, currentChild.size)
+			currentChild.lifeSpan -= 1
+			if(currentChild.lifeSpan <= 0)
+			{
+				statsBoard.score += 50;
+				statsBoard.children.current += 1;
+				this.childrenToStatsArray = []
+			}
+		}
+	},
+
 	drawBoard: function ()
 	{
 		textSize(20)
@@ -324,7 +462,7 @@ statsBoard =
 		noStroke()
 
 		fill(255)
-		rect(20, 20, 200, 80, 15) //main board
+		rect(20, 20, 180, 100, 15) //main board
 
 		fill(0)
 		text(this.score, 35, 50) // score
@@ -333,15 +471,14 @@ statsBoard =
 		text(this.carrots.thisLevel + " / " + this.carrots.thisLevelTotal, 60, 78)
 		text(this.enemies.thisLevel + " / " + this.enemies.thisLevelTotal, 150, 78)
 		text(this.lives.current + " / " + this.lives.total, 150, 51)
-
-
-
-
+		text(this.children.current + " / " + this.children.total, 60, 106)
 
 		// DRAW CARROT SYMBOL
 		this.drawCarrot(this.carrotData.xPos, this.carrotData.yPos, this.carrotData.size)
 		// DRAW LIVES SYMBOL
 		this.drawHeart(this.heartData.xPos, this.heartData.yPos, this.heartData.size)
+		// DRAW CHILD SYMBOL
+		this.drawChild(this.childrenData.xPos, this.childrenData.yPos, this.childrenData.size)
 
 		//DRAW ENEMY SYMBOL
 		x = 130
@@ -371,6 +508,7 @@ statsBoard =
 
 	drawCarrot: function (x, y, s)
 	{
+		noStroke();
 		fill(carrots.innerColor)
 		//main carrot
 		push();
@@ -395,7 +533,9 @@ statsBoard =
 
 	drawHeart: function(x, y, s)
 	{
+
 		fill(lives.color)
+		noStroke();
 		push();
 		translate(-(50 * s), -(25 * s));
 		rect(x, y, 100 * s, 40 * s) // main
@@ -411,6 +551,52 @@ statsBoard =
 
 		rect(x + (30 * s), y + (40 * s), 40 * s, 20 * s) // very bottom
 		rect(x + (43 * s), y + (55 * s), 15 * s, 15 * s) // very very bottom
+		pop();
+	},
+
+	drawChild: function(x, y, s)
+	{
+		stroke(0); //black outline color
+		strokeWeight(5 * s); //black outline width
+		fill(205,133,63); // body color
+
+		push();
+		translate(0, -160 * s)
+
+		push();
+		translate(x - (25 * s) + ((20 * s) / 2), 
+				y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+		fill(160,82,45); // light color
+		stroke(160,82,45); // light color
+		rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+		pop();
+
+		push();
+		translate(x + (8 * s) + ((20 * s) / 2), 
+				y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+		fill(160,82,45); // light color
+		stroke(160,82,45); // light color
+		rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+		pop();
+
+		//main body
+		rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+		rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+		rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+		rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+		//legs
+		rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
+		rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
+		rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
+		rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+
+		fill(160,82,45); // light color
+		stroke(160,82,45); // light color
+		rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+
 		pop();
 	}
 }
@@ -552,7 +738,7 @@ clouds =
 	maxLeft: 100,
 	maxRight: 700,
 
-	updateCloudRiders: function (cloudIdx)
+	updateCharacterOnCLoud: function (cloudIdx)
 	{
 		gameCharXInRange = (rabbitCharacter.realWorldPos > this.cloudsArray[cloudIdx].xPos + 15 &&
 							rabbitCharacter.realWorldPos < this.cloudsArray[cloudIdx].xPos + 175);
@@ -567,6 +753,81 @@ clouds =
 			rabbitCharacter.ridingCloudData.cloudRiding = cloudIdx;
 		}
 	},
+
+	updateCloudObjects: function (cloudIdx)
+	{
+		currentCloud = this.cloudsArray[cloudIdx]
+		//check all carrots
+		for(i = 0; i < carrots.carrotArray.length; i++)
+		{
+			currentCarrot = carrots.carrotArray[i]
+			xInRange = (currentCarrot.x > currentCloud.xPos + 15 && currentCarrot.x < currentCloud.xPos + 175)
+			yInRange = abs((currentCarrot.y + heightPos) - (currentCloud.yPos + heightPos)) < 50
+			if(xInRange && yInRange)
+			{
+				if(currentCloud.direction == "left")
+				{
+					currentCarrot.x -= currentCloud.speed
+				}
+				else if (currentCloud.direction == "right")
+				{
+					currentCarrot.x += currentCloud.speed
+				}
+			}			
+		}
+
+		//check all hearts
+		for(i = 0; i < lives.heartsArray.length; i++)
+		{
+			currentHeart = lives.heartsArray[i]
+			xInRange = (currentHeart.x > currentCloud.xPos + 15 && currentHeart.x < currentCloud.xPos + 175)
+			yInRange = abs((currentHeart.y + heightPos) - (currentCloud.yPos + heightPos)) < 60
+
+			if(xInRange && yInRange)
+			{
+				if(currentCloud.direction == "left")
+				{
+					currentHeart.x -= currentCloud.speed
+				}
+				else if (currentCloud.direction == "right")
+				{
+					currentHeart.x += currentCloud.speed
+				}
+			}			
+		}
+
+		//check all enemies
+		for(i = 0; i < enemies.enemiesArray.length; i++)
+		{
+			currentEnemy = enemies.enemiesArray[i]
+			xInRange = (currentEnemy.xPos > currentCloud.xPos + 15 && currentEnemy.xPos < currentCloud.xPos + 175)
+			yInRange = abs((currentEnemy.yPos + heightPos) - (currentCloud.yPos + heightPos)) < 60
+
+			if(xInRange && yInRange)
+			{
+				if(currentCloud.direction == "left")
+				{
+					currentEnemy.xPos -= currentCloud.speed
+				}
+				else if (currentCloud.direction == "right")
+				{
+					currentEnemy.xPos += currentCloud.speed
+				}
+			}			
+		}
+
+		// //check child
+		// for(i = 0; i < ; i ++)
+		// {
+		// 	xInRange
+		// 	yInRange
+		// 	if(xInRange && yInRange)
+		// 	{
+				
+		// 	}
+		// }
+	},
+
 
 	createCloud: function (xPos, yPos, direction)
 	{
@@ -632,7 +893,8 @@ clouds =
 	{
 		for(cloudIdx = 0; cloudIdx < this.cloudsArray.length; cloudIdx++)
 		{
-			this.updateCloudRiders(cloudIdx)
+			this.updateCharacterOnCLoud(cloudIdx)
+			this.updateCloudObjects(cloudIdx)
 
 			//handle randomized clouds
 			if(frameCount % 60 == 0)
@@ -706,7 +968,7 @@ carrots =
 			y: y,
 			currentYPos: y,
 			size: s,
-			currentSize: s,
+			originalSize: s,
 			downAnimation: true,
 			beenCollected: false,
 			carrotFloorPosY: y + (s * 150),
@@ -741,7 +1003,7 @@ carrots =
 			{
 				if(!this.carrotArray[i].beenCollected)
 				{
-					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(255, 215, 0), color(218, 165, 32))
+					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(255, 215, 0), color(218, 165, 32), this.carrotArray[i])
 
 				}
 				
@@ -775,15 +1037,16 @@ carrots =
 			//animate the carrots once they are collected
 			if(this.carrotArray[i].beenCollected)
 			{
-				if(this.carrotArray[i].currentSize * 2 > this.carrotArray[i].size)
+				if(this.carrotArray[i].originalSize * 2 > this.carrotArray[i].size)
 				{
 					this.carrotArray[i].size *= 1.0075;
 				}
 				else
 				{
 					c = this.carrotArray[i]
-					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, yPos: c.y, size: c.size, lifeSpan: 100,
-														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / 100, yUpdate: abs(c.y - statsBoard.carrotData.yPos) / 100, sizeUpdate: (statsBoard.carrotData.size - c.size) / 100})
+					duration = 50 // controls duration in # of frames of collectables going to stats board
+					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, yPos: c.y + heightPos, size: c.size, lifeSpan: duration,
+														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / duration, yUpdate: abs((c.y + heightPos) - statsBoard.carrotData.yPos) / duration, sizeUpdate: (statsBoard.carrotData.size - c.size) / duration})
 					this.carrotArray.splice(i, 1);
 					continue;
 				}
@@ -984,12 +1247,12 @@ rabbitCharacter =
 
 	checkOnSurface: function ()
 	{
-		floorPos = 320 + heightPos
-		onFloor = abs(this.yPos - floorPos) < 8
+		resetPosition = 320 + heightPos
+		onFloor = abs(this.getFeetPos() - (floorPos_y + heightPos)) < 8
 		if(onFloor && this.isDead == false)
 		{
 			rabbitCharacter.onFloor = true;
-			rabbitCharacter.yPos = floorPos;
+			rabbitCharacter.yPos = resetPosition;
 		}
 	},
 
@@ -1243,7 +1506,7 @@ rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getCenterPos(), 20, 20);
+			// ellipse(this.xPos, this.getCenterPos(), 20, 20);
 		}
 		else if(this.userInput.direction == "left")
 		{
@@ -1314,7 +1577,7 @@ rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x - (45 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getCenterPos(), 20, 20);
+			// ellipse(this.xPos, this.getCenterPos(), 20, 20);
 		}
 		else if(this.userInput.direction == "front")
 		{
@@ -1413,7 +1676,7 @@ rabbitCharacter =
 			stroke(255, 130, 197); // pink color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			fill(255, 0, 0);
-			ellipse(this.xPos, this.getCenterPos(), 20, 20);
+			// ellipse(this.xPos, this.getCenterPos(), 20, 20);
 		}
 	}
 };
@@ -1482,6 +1745,10 @@ enemies =
 			if(enemy.isDead)
 			{
 				enemy.yPos += 3;
+				if(enemy.yPos > 600)
+				{
+					this.enemiesArray.splice(enemyIdx, 1)
+				}
 			}
 
 			fill(255);
@@ -1677,7 +1944,7 @@ collectedAnimations =
 {
 	activeAnimations: [],
 
-	addAnimation: function(xPos, yPos, rectOneColor, rectTwoColor)
+	addAnimation: function(xPos, yPos, rectOneColor, rectTwoColor, animationObj)
 	{
 		animation = 
 		{
@@ -1689,7 +1956,8 @@ collectedAnimations =
 			rectTwoWidth: 0,
 			rectOneColor: rectOneColor,
 			rectTwoColor: rectTwoColor,
-			lifeTime: 92
+			lifeTime: 92,
+			animationObj: animationObj
 		};
 		this.activeAnimations.push(animation);
 	},
@@ -1698,10 +1966,14 @@ collectedAnimations =
 	{
 		noStroke();
 		for(i = this.activeAnimations.length - 1; i >= 0; i--)
-		{
+		{			
+
 			animation = this.activeAnimations[i];
 			animation.rectOneHeight += 40;
 			animation.rectOneWidth += 2;
+
+			animation.xPos = animation.animationObj.x
+
 			if(animation.rectOneHeight > 200)
 			{
 				animation.rectTwoHeight = animation.rectOneHeight;
@@ -1793,5 +2065,20 @@ function logFrameRate(lessThan, greaterThan)
 	{
 		console.log("> " + greaterThan)
 	}
+}
+
+//--------------------OUT OF BOUNDS HELPER FUNCTION--------------------//
+function checkOutOfBounds()
+{
+	groundStart = currentGround[0].x
+	groundEnd = currentGround[0].x + currentGround[0].width
+
+	yInRange = ((abs(rabbitCharacter.getFeetPos() - (floorPos_y + heightPos)) < 8) || rabbitCharacter.getFeetPos > floorPos_y)
+	xInRange = (rabbitCharacter.realWorldPos < groundStart || rabbitCharacter.realWorldPos > groundEnd)
+
+	if(yInRange && xInRange)
+	{
+		rabbitCharacter.isDead = true;
+	} 
 }
 	
