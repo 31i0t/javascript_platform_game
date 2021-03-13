@@ -49,7 +49,7 @@ function startGame()
 	mountains.mountainColors = {sideMountains: color(126,116,116), middleMountain: color(196,182,182), river: color(31,111,139), snowCap: color(255,255,255)}
 	mountains.mountainIndcies = [{xPos: width/2, yPos: 200, scale: 1}]
 	trees.treeColors = {leaves: color(0, 155, 0), trunk: color(120, 100, 40)}
-	trees.treeIndcies = [20, 200, 500]
+	trees.treeIndicies = [{xPos: 20, yPos: height/2, scale: 1}, {xPos: 200, yPos: height/2, scale: 1}, {xPos: 500, yPos: height/2, scale: 1}]
 	canyons.addCanyons([{xPos: 400, canyonWidth: 100}, {xPos: 600, canyonWidth: 100}])
 	canyons.color = color(100, 155, 255)
 	enemies.enemyColors = {hatTop: color(153, 76, 0),
@@ -105,7 +105,7 @@ function draw()
 }
 
 //objects
-//--------------------CHILD OBJECT--------------------//
+//--------------------LEVELS OBJECT (STORES LEVEL DATA)--------------------//
 // levels = 
 // {
 
@@ -650,7 +650,7 @@ canyons =
 //--------------------TREES OBJECT--------------------//
 trees = 
 {
-	treeIndcies: [],
+	treeIndicies: [],
 
 	treeColors: 
 	{
@@ -661,19 +661,19 @@ trees =
 	drawTrees: function ()
 	{
 		noStroke();
-		for (var i = 0; i < this.treeIndcies.length; i++)
+		for (var i = 0; i < this.treeIndicies.length; i++)
     	{
-			x = this.treeIndcies[i]
-			fill(this.treeColors.trunk)
-			rect(x, height/2, 60, 150)
-			
+			x = this.treeIndicies[i].xPos
+			y = this.treeIndicies[i].yPos
+			s = this.treeIndicies[i].scale
+
+			fill(this.treeColors.trunk)	
+			rect(x, y, 50 * s, 150 * s)
+		
 			fill(this.treeColors.leaves)
-			triangle(x - 50, height/2 + 50, 
-					x + 30, height/2 - 50, 
-					x + 110, height/2 + 50)
-			triangle(x - 50, height/2, 
-					x + 30, height/2 - 100, 
-					x + 110, height/2)
+			rect(x - (100 * s), y - (100 * s), 250 * s, 100 * s)
+			rect(x - (50 * s), y - (180 * s), 150 * s, 80 * s)
+			rect(x, y - (205 * s), 50 * s, 25 * s)
    		}
 	}
 }
