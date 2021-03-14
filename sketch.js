@@ -18,11 +18,13 @@ function startGame()
 	heightPos = 0;
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	carrots.setCarrotColors(color(246, 118, 34), color(35, 92, 70),)
-	carrotsArray = [{xPos: 250, yPos: 50, size: 0.2}, {xPos: 850, yPos: 380, size: 0.2}]
+	carrotsArray = [{xPos: 1225, yPos: 380, size: 0.2},
+					{xPos: 1400, yPos: 15, size: 0.2},
+					{xPos: 1600, yPos: -185, size: 0.2}]
 	carrots.addCarrots(carrotsArray)
 	statsBoard.carrots.thisLevelTotal = carrotsArray.length
 	lives.color = color(255, 0, 0)
-	heartsArray = [{xPos: 450, yPos: 200, size: 0.3}, {xPos: 20, yPos: 380, size: 0.3}]
+	heartsArray = [{xPos: 2060, yPos: 375, size: 0.3}]
 	lives.addHearts(heartsArray)
 	currentGround = drawTerrain.generateLayeredGround(color(19,232,83),
 								color(12,86,25),
@@ -31,10 +33,10 @@ function startGame()
 								color(35,21,14),
 								color(13,9,6),
 								floorPos_y,
-								0,
-								width);
-	platformsData = [{yPos: 100, platformStart: 200, platformEnd: 500},
-					{yPos: 300, platformStart: 100, platformEnd: 200}]
+								400,
+								2800);
+								//2800
+	platformsData = [{yPos: 200, platformStart: 100, platformEnd: 3300}]
 	currentPlatforms = drawTerrain.generateLayeredPlatforms(color(19,232,83),
 								color(12,86,25),
 								color(77,50,32),
@@ -42,15 +44,14 @@ function startGame()
 								color(35,21,14),
 								color(13,9,6),
 								platformsData)
-	clouds.addClouds([{xPos: 400, yPos: 200, direction: "left"},
-					{xPos: 100, yPos: 0, direction: "right"},
-					{xPos: 100, yPos: -200, direction: "left"},
-					{xPos: 100, yPos: -400, direction: "right"}])
+	clouds.addClouds([{xPos: 1200, yPos: 200, direction: "right", speed: 4, maxLeft: 0, maxRight: 600},
+					{xPos: 1300, yPos: 0, direction: "right", speed: 3, maxLeft: 0, maxRight: 500},
+					{xPos: 1500, yPos: -200, direction: "right", speed: 2, maxLeft: 0, maxRight: 100}])
 	mountains.mountainColors = {sideMountains: color(126,116,116), middleMountain: color(196,182,182), river: color(31,111,139), snowCap: color(255,255,255)}
-	mountains.mountainIndcies = [{xPos: width/2, yPos: 200, scale: 1}]
+	mountains.mountainIndcies = [{xPos: 2500, yPos: 432, scale: 2.7}]
 	trees.treeColors = {leaves: color(0, 155, 0), trunk: color(120, 100, 40)}
-	trees.treeIndicies = [{xPos: 20, yPos: height/2, scale: 1}, {xPos: 200, yPos: height/2, scale: 1}, {xPos: 500, yPos: height/2, scale: 1}]
-	canyons.addCanyons([{xPos: 400, canyonWidth: 100}, {xPos: 600, canyonWidth: 100}])
+	trees.treeIndicies = [{xPos: 480, yPos: height/2, scale: 1.45}]
+	canyons.addCanyons([{xPos: 640, canyonWidth: 150}, {xPos: 1275, canyonWidth: 750}])
 	canyons.color = color(100, 155, 255)
 	enemies.enemyColors = {hatTop: color(153, 76, 0),
 		hatBottom: color(102, 51, 0),
@@ -61,9 +62,11 @@ function startGame()
 		body: color(0, 77, 0),
 		face: color(191, 153, 115),
 		bulletColor: color(69)}
-	enemiesArray = [{xPos: 450, yPos: 200, scale: 1, firingFrequency: 100, firingSpeed: 20, maxBulletDistLeft: 100, maxBulletDistRight: 700}]
+	enemiesArray = [{xPos: 1030, yPos: 392, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300}]
 	enemies.addEnemies(enemiesArray)
 	statsBoard.enemies.thisLevelTotal = enemiesArray.length
+	child.setChildDimensions(3265, 169, 0.3)
+	child.colors = {platformColor: color(255)}
 	
 }
 
@@ -114,12 +117,21 @@ function draw()
 //--------------------CHILD OBJECT--------------------//
 child = 
 {
-	xPos: 200,
-	yPos: 400,
-	size: 0.3,
-	originalSize: 0.3,
+	xPos: null,
+	yPos: null,
+	size: null,
+	originalSize: null,
+	colors: {platformColor: null},
 	drawChildBool: true,
 	isFound: false,
+
+	setChildDimensions: function (xPos, yPos, size)
+	{
+		this.xPos = xPos
+		this.yPos = yPos
+		this.size = size
+		this.originalSize = size
+	},
 
 	getFeetPos: function ()
 	{
@@ -192,6 +204,9 @@ child =
 			stroke(160,82,45); // light color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 
+			noStroke();
+			fill(this.colors.platformColor);
+			rect(x - (60 * s), y + (222 * s), 125 * s, 40 * s)
 			pop();
 		}
 	},
@@ -642,7 +657,7 @@ canyons =
 				statsBoard.lives.current -= 1
 			}
 			fill(this.color);
-			rect(this.canyonsArray[i].x, floorPos_y, this.canyonsArray[i].canyonWidth, 400)
+			rect(this.canyonsArray[i].x, floorPos_y - 1, this.canyonsArray[i].canyonWidth, 400)
 		}
 	}
 }
@@ -699,6 +714,10 @@ mountains =
 			x = this.mountainIndcies[i].xPos
 			y = this.mountainIndcies[i].yPos
 			s = this.mountainIndcies[i].scale
+
+			push();
+			translate(0, -(s * 232));
+
 			//side mountains
 			fill(this.mountainColors.sideMountains)
 			triangle(x - (40 * s), y + (100 * s),
@@ -728,16 +747,14 @@ mountains =
 			vertex(x + (20 * s), y + (150 * s));
 			vertex(x + (5 * s), y + (75 * s))
 			endShape(CLOSE);   
+			pop();
 		}
 	}
 }
 
 //--------------------CLOUDS OBJECT--------------------//
-clouds = 
+clouds =
 {
-	maxLeft: 100,
-	maxRight: 700,
-
 	updateCharacterOnCLoud: function (cloudIdx)
 	{
 		gameCharXInRange = (rabbitCharacter.realWorldPos > this.cloudsArray[cloudIdx].xPos + 15 &&
@@ -829,16 +846,18 @@ clouds =
 	},
 
 
-	createCloud: function (xPos, yPos, direction)
+	createCloud: function (xPos, yPos, direction, speed, maxLeft, maxRight)
 	{
 		c = 
 		{
 			xPos: xPos,
 			yPos: yPos,
 			direction: direction,
-			speed: random(1, 4),
+			speed: speed,
 			realPos: xPos,
-			squares: null
+			squares: null,
+			maxLeft: xPos - maxLeft,
+			maxRight: xPos + maxRight
 		}
 		return c
 	},
@@ -883,7 +902,7 @@ clouds =
 		for(cloudIdx = 0; cloudIdx < inputArray.length; cloudIdx++)
 		{
 			currentInput = inputArray[cloudIdx];
-			cloud = this.createCloud(currentInput.xPos, currentInput.yPos, currentInput.direction, cloudIdx)
+			cloud = this.createCloud(currentInput.xPos, currentInput.yPos, currentInput.direction, currentInput.speed, currentInput.maxLeft, currentInput.maxRight)
 			this.cloudsArray.push(cloud)
 			cloud.squares = this.generateCloudSquares(this.cloudsArray.length - 1)
 		}
@@ -905,9 +924,11 @@ clouds =
 
 			//handle cloud animation
 			currentCloudX = this.cloudsArray[cloudIdx].realPos
+			maxLeft = this.cloudsArray[cloudIdx].maxLeft
+			maxRight = this.cloudsArray[cloudIdx].maxRight
 			if(this.cloudsArray[cloudIdx].direction == "left")
 			{
-				if(currentCloudX < this.maxLeft)
+				if(currentCloudX < maxLeft)
 				{
 					this.cloudsArray[cloudIdx].direction = "right"
 				}
@@ -919,7 +940,7 @@ clouds =
 			}
 			else
 			{
-				if(currentCloudX > this.maxRight)
+				if(currentCloudX > maxRight)
 				{
 					this.cloudsArray[cloudIdx].direction = "left"
 				}
@@ -934,7 +955,6 @@ clouds =
 			for(squareIdx = 0; squareIdx < this.cloudsArray[cloudIdx].squares.length; squareIdx++)
 			{
 				currentRect = this.cloudsArray[cloudIdx].squares[squareIdx]
-				// updatedXPos = map(currentRect.x,  this.maxLeft, this.maxRight)
 				push();
 				translate(this.cloudsArray[cloudIdx].xPos, 0);
 				fill(255);
@@ -1188,7 +1208,8 @@ drawTerrain =
 			gameCharXInRange = (rabbitCharacter.realWorldPos > this.currentPlatforms[platformIdx].platformStart &&
 								rabbitCharacter.realWorldPos < this.currentPlatforms[platformIdx].platformEnd);
 
-			gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (this.currentPlatforms[platformIdx].yPos + heightPos) + 4) < 10
+
+			gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (this.currentPlatforms[platformIdx].yPos + heightPos) + 4) < 8
 
 			onPlatform = gameCharXInRange && gameCharYInRange && rabbitCharacter.jumpingData.goingUpwards == false
 			if(onPlatform)
@@ -1208,7 +1229,7 @@ rabbitCharacter =
 {
 	realWorldPos: 0,
 	xPos: 512,
-	yPos: 320, 
+	yPos: 321, 
 	size: 0.5,
 	onFloor: true,
 	isDead: false,
@@ -1291,16 +1312,29 @@ rabbitCharacter =
 			{
 				if(this.userInput.direction == "front")
 				{
-					this.xPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
-					scrollPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+					if(this.xPos < width * 0.8)
+					{
+						this.xPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+					}
+					else
+					{
+						scrollPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+					}	
 				}
 			}
+
 			else if(clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
 			{
 				if(this.userInput.direction == "front")
 				{
-					this.xPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
-					scrollPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed / 2
+					if(this.xPos > width * 0.2)
+					{
+						this.xPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+					}
+					else
+					{
+						scrollPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+					}					
 				}
 			}
 
@@ -1441,10 +1475,19 @@ rabbitCharacter =
 			if(this.xPos < width * 0.8)
 			{
 				this.xPos += 4;
+
+				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
+				{
+					this.xPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+				}
 			}
 			else
 			{
 				scrollPos -= 4;
+				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
+				{
+					scrollPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+				}
 			}
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
@@ -1513,10 +1556,19 @@ rabbitCharacter =
 			if(this.xPos > width * 0.2)
 			{
 				this.xPos -= 4;
+
+				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
+				{
+					this.xPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+				}
 			}
 			else
 			{
 				scrollPos += 4;
+				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
+				{
+					scrollPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
+				}
 			}
 			stroke(0); //black outline color
 			strokeWeight(5 * s); //black outline width
@@ -1859,8 +1911,8 @@ enemies =
 				scale: scale,
 				direction: direction,
 				speed: speed,
-				maxDistLeft: maxDistLeft,
-				maxDistRight: maxDistRight
+				maxDistLeft: xPos - maxDistLeft,
+				maxDistRight: xPos + maxDistRight
 			}
 			return b
 		},
