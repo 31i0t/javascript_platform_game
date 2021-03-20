@@ -47,6 +47,7 @@ function startGame()
 	clouds.cloudsArray = [];
 	canyons.canyonsArray = [];
 	enemies.enemiesArray = [];
+	foxes.caves = [];
 	statsBoard.score = 0;
 	statsBoard.lives.current = 1;
 	statsBoard.enemies.totalKilled = 0;
@@ -65,6 +66,8 @@ function startGame()
 	
 
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
+	foxes.addCaves(level.cavesData)
+
 	skyColor = color(level.skyColor);
 	carrots.setCarrotColors(color(level.carrotColor), color(level.carrotStemColor),)
 	carrotsArray = level.carrotPositionsArray
@@ -108,6 +111,7 @@ function startGame()
 	enemies.addEnemies(enemiesArray)
 	child.setChildDimensions(level.childXPos, level.childYPos, level.childSize)
 	child.colors = {platformColor: color(level.childPlatformColor)}
+
 }
 
 function draw()
@@ -130,6 +134,9 @@ function draw()
 	enemies.bullets.updateExpiredBullets()
 	enemies.bullets.drawBullets()
 	enemies.drawEnemies()
+	foxes.drawCaves()
+	foxes.drawFoxes()
+	foxes.updateFoxes()
 	pop();
 
 	rabbitCharacter.drawRabbit()
@@ -374,6 +381,919 @@ messages =
 	}
 }
 
+//--------------------HANDLES FOXES & CAVES--------------------//
+foxes = 
+{
+	createCave: function (xPos, yPos, size, direction, numOfFoxes, foxSpeed, foxGap, maxNumOfLives, maxNumberOfFoxesOut)
+	{
+		c = 
+		{
+			xPos: xPos, 
+			yPos: yPos, 
+			size: size,
+			originalSize: size,
+			animation: {isAnimating: false, duration: foxes.caveAnimationData.animationDuration}, 
+			direction: direction,
+			maxNumberOfFoxesOut: maxNumberOfFoxesOut,
+			numOfFoxes: numOfFoxes, 
+			foxSpeed: foxSpeed, 
+			foxGap: foxGap,
+			caveFoxesArray: foxes.getCaveFoxesArray(xPos, yPos, direction, numOfFoxes, maxNumOfLives)
+		}
+		return c
+	},
+
+	getCaveFoxesArray: function(xPos, yPos, direction, numOfFoxes, maxNumOfLives)
+	{
+		foxesArray = []
+		for(i = 0; i < numOfFoxes; i++)
+		{
+			newFox = 
+			{
+				xPos: xPos,
+				yPos: yPos,
+				isFalling: false,
+				isDead: false,
+				isOutside: false,
+				foxDirectionSet: true,
+				lives: round(random(0.6, maxNumOfLives)),
+				direction: direction,
+				movingData:
+				{
+					platformData: {onPlatform: false, platformIdx: null},
+					cloudData: {onCloud: false, cloudIdx: null},
+					groundData: {onGround: false, groundIdx: null}
+				}
+			}
+			foxesArray.push(newFox)
+		}
+		return foxesArray
+	},
+
+	caves: [],
+
+	caveColors: 
+	{
+		lightStone: [187, 192, 200],
+		darkStone: [101, 115, 126],
+		inside: [33, 14, 0]
+	},
+
+	foxColors:
+	{
+		darkFurLight: [255, 127, 9],
+		darkFurDark: [206, 44, 0],
+		highlights: [216, 220, 226],
+		outlineColor: [77, 18, 0]
+	},
+
+	addCaves: function (caveData)
+	{
+		for(newCaveIdx = 0; newCaveIdx < caveData.length; newCaveIdx++)
+		{
+			currentCave = caveData[newCaveIdx]
+			
+			newCave = this.createCave(currentCave.xPos, currentCave.yPos, currentCave.size, currentCave.direction, currentCave.numOfFoxes, currentCave.foxSpeed, currentCave.foxGap, currentCave.maxNumOfLives, currentCave.maxNumberOfFoxesOut)
+			this.caves.push(newCave)
+		}	
+	},
+
+	caveAnimationData: 
+	{
+		animationDuration: 20,
+
+		animationBounceSize: 1.01,
+	},
+	
+	drawCaves: function()
+	{
+		for(caveIdx = 0; caveIdx < this.caves.length; caveIdx++)
+		{	
+			currentCave = this.caves[caveIdx]
+
+			x = currentCave.xPos
+			y = currentCave.yPos
+
+			if(currentCave.animation.isAnimating)
+			{
+				animationDuration = this.caveAnimationData.animationDuration
+				animationBounceSize = this.caveAnimationData.animationBounceSize
+
+				//animation to bounce cave when fox comes out
+				if(currentCave.animation.duration > animationDuration / 2)
+				{
+					currentCave.size *= animationBounceSize
+				}
+				else
+				{
+					this.caves[caveIdx].size *= 1 - abs(1 - animationBounceSize)
+				}
+
+				currentCave.animation.duration -= 1
+
+				//stop animation when neeeded
+				if(currentCave.animation.duration == 0)
+				{
+					currentCave.animation.isAnimating = false
+					currentCave.animation.duration = animationDuration
+					currentCave.size = currentCave.originalSize
+				}
+			}
+
+			s = currentCave.size
+
+			if(currentCave.direction == "left")
+			{
+				push();
+				translate(-75 * s, -310 * s)
+				noStroke();
+
+				//inside cave
+				fill(color(this.caveColors.inside))
+				beginShape();
+					vertex(x - (110 * s), y + (310 * s))
+					vertex(x - (105 * s), y + (120 * s))
+					vertex(x - (40 * s), y + (40 * s))
+					vertex(x + (170 * s), y + (40 * s))
+					vertex(x + (170 * s), y + (310 * s))
+				endShape();
+
+
+				//sorted from left -> right
+					//sorted by y
+				fill(color(this.caveColors.darkStone))
+				rect(x - (120 * s), y + (260 * s), 30 * s, 30 * s)
+				rect(x - (120 * s), y + (205 * s), 30 * s, 30 * s)
+				rect(x - (120 * s), y + (140 * s), 40 * s, 40 * s)
+				rect(x - (90 * s), y + (70 * s), 40 * s, 40 * s)
+				rect(x - (80 * s), y + (50 * s), 40 * s, 40 * s)
+				rect(x - (30 * s), y + (10 * s), 40 * s, 40 * s)
+				rect(x + (40 * s), y + (10 * s), 50 * s, 50 * s)
+				rect(x + (110 * s), y + (25 * s), 70 * s, 50 * s)
+				rect(x + (110 * s), y + (60 * s), 60 * s, 60 * s)
+				rect(x + (160 * s), y + (70 * s), 60 * s, 60 * s)
+				rect(x + (140 * s), y + (120 * s), 95 * s, 95 * s)
+				rect(x + (160 * s), y + (170 * s), 85 * s, 85 * s)
+				rect(x + (200 * s), y + (230 * s), 80 * s, 80 * s)
+
+
+				fill(color(this.caveColors.lightStone))
+				rect(x - (120 * s), y + (280 * s), 30 * s, 30 * s)
+				rect(x - (140 * s), y + (270 * s), 30 * s, 30 * s)
+				rect(x - (130 * s), y + (230 * s), 35 * s, 35 * s)
+				rect(x - (130 * s), y + (180 * s), 30 * s, 30 * s)
+				rect(x - (110 * s), y + (100 * s), 40 * s, 40 * s)
+				rect(x - (60 * s), y + (25 * s), 40 * s, 40 * s)
+				rect(x, y, 50 * s, 50 * s)
+				rect(x + (80 * s), y + (30 * s), 55 * s, 55 * s)
+				rect(x + (90 * s), y + (15 * s), 70 * s, 50 * s)
+				rect(x + (140 * s), y + (80 * s), 45 * s, 45 * s)
+				rect(x + (200 * s), y + (125 * s), 25 * s, 25 * s)
+				rect(x + (130 * s), y + (140 * s), 65 * s, 65 * s)
+				rect(x + (140 * s), y + (220 * s), 90 * s, 90 * s)
+				rect(x + (210 * s), y + (180 * s), 55 * s, 55 * s)
+				rect(x + (250 * s), y + (270 * s), 40 * s, 40 * s)
+				pop();
+			}
+			else if (currentCave.direction == "right")
+			{
+				push();
+				translate(54 * s, -310 * s)
+				noStroke();
+
+				//inside cave
+				fill(color(this.caveColors.inside))
+				beginShape();
+					vertex(x + (110 * s), y + (310 * s))
+					vertex(x + (105 * s), y + (120 * s))
+					vertex(x + (40 * s), y + (40 * s))
+					vertex(x - (170 * s), y + (40 * s))
+					vertex(x - (170 * s), y + (310 * s))
+				endShape();
+
+
+				//sorted from left -> right
+					//sorted by y
+				fill(color(this.caveColors.darkStone))
+				rect(x + (90 * s), y + (260 * s), 30 * s, 30 * s)
+				rect(x + (90 * s), y + (205 * s), 30 * s, 30 * s)
+				rect(x + (80 * s), y + (140 * s), 40 * s, 40 * s)
+				rect(x + (50 * s), y + (70 * s), 40 * s, 40 * s)
+				rect(x + (40 * s), y + (50 * s), 40 * s, 40 * s)
+				rect(x - (10 * s), y + (10 * s), 40 * s, 40 * s)
+				rect(x - (90 * s), y + (10 * s), 50 * s, 50 * s)
+				rect(x - (180 * s), y + (25 * s), 70 * s, 50 * s)
+				rect(x - (170 * s), y + (60 * s), 60 * s, 60 * s)
+				rect(x - (220 * s), y + (70 * s), 60 * s, 60 * s)
+				rect(x - (235 * s), y + (120 * s), 95 * s, 95 * s)
+				rect(x - (245 * s), y + (170 * s), 85 * s, 85 * s)
+				rect(x - (280 * s), y + (230 * s), 80 * s, 80 * s)
+
+
+				fill(color(this.caveColors.lightStone))
+				rect(x + (90 * s), y + (280 * s), 30 * s, 30 * s)
+				rect(x + (110 * s), y + (270 * s), 30 * s, 30 * s)
+				rect(x + (95 * s), y + (230 * s), 35 * s, 35 * s)
+				rect(x + (100 * s), y + (180 * s), 30 * s, 30 * s)
+				rect(x + (70 * s), y + (100 * s), 40 * s, 40 * s)
+				rect(x + (20 * s), y + (25 * s), 40 * s, 40 * s)
+				rect(x - (50 * s), y, 50 * s, 50 * s)
+				rect(x - (135 * s), y + (30 * s), 55 * s, 55 * s)
+				rect(x - (160 * s), y + (15 * s), 70 * s, 50 * s)
+				rect(x - (185 * s), y + (80 * s), 45 * s, 45 * s)
+				rect(x - (225 * s), y + (125 * s), 25 * s, 25 * s)
+				rect(x - (195 * s), y + (140 * s), 65 * s, 65 * s)
+				rect(x - (230 * s), y + (220 * s), 90 * s, 90 * s)
+				rect(x - (265 * s), y + (180 * s), 55 * s, 55 * s)
+				rect(x - (290 * s), y + (270 * s), 40 * s, 40 * s)
+				pop();
+			}
+		}
+
+	},
+
+	getNumberOfFoxesOutside: function()
+	{
+		foxesOutside = 0
+
+		for(i = 0; i < this.caves.length; i++)
+		{
+			for(j = this.caves[i].caveFoxesArray.length - 1; j >= 0; j--)
+			{
+				f = this.caves[i].caveFoxesArray[j]
+				if(f.isOutside){foxesOutside += 1}
+			}
+		}
+
+		return foxesOutside
+	},
+
+	updateFoxes: function ()
+	{
+
+		console.log(this.caves)
+		for(caveIdx = 0; caveIdx < this.caves.length; caveIdx++)
+		{
+
+			currentCave = this.caves[caveIdx]
+
+			//handle letting out foxes from caves
+			if(frameCount % currentCave.foxGap == 0)
+			{
+				for(foxIdx = this.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+				{
+					currentFox = this.caves[caveIdx].caveFoxesArray[foxIdx]
+					foxLetOut = false
+
+					numberOfFoxesOut = this.getNumberOfFoxesOutside()
+
+					if(currentFox.isOutside == false && numberOfFoxesOut < currentCave.maxNumberOfFoxesOut)
+					{
+						foxLetOut = true
+						currentFox.isOutside = true
+						currentCave.animation.isAnimating = true;
+					}
+
+					if(foxLetOut){break}
+				}
+			}
+
+			for(foxIdx = this.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+			{
+				currentFox = this.caves[caveIdx].caveFoxesArray[foxIdx]
+
+				//keep fox yPos aligned with current platform
+				if(currentFox.movingData.platformData.onPlatform)
+				{
+					platformHeight = drawTerrain.currentPlatforms[currentFox.movingData.platformData.platformIdx].yPos
+					currentFox.yPos = platformHeight
+				}
+
+				//keep fox yPos aligned with current cloud
+				if(currentFox.movingData.cloudData.onCloud)
+				{
+
+					cloudY = clouds.cloudsArray[currentFox.movingData.cloudData.cloudIdx].yPos + 60
+					currentFox.yPos = cloudY
+				}
+
+				//keep fox yPos aligned with current cloud
+				if(currentFox.movingData.groundData.onGround)
+				{
+					currentFox.yPos = floorPos_y
+				}
+
+				//values for checking if current fox has been "jumped on"
+				if(this.checkFoxKilled(currentFox))
+				{
+					currentFox.lives -= 1;
+					if(currentFox.lives <= 0)
+					{
+						currentFox.movingData.platformData.onPlatform = false
+						currentFox.movingData.cloudData.onCloud = false
+						currentFox.movingData.groundData.onGround = false
+						currentFox.isDead = true;
+						currentFox.direction = "front";
+					}	
+				}
+
+				//code to update fox movingData
+
+				//make fox fall off current platform if they're out of range
+				if(currentFox.movingData.platformData.onPlatform)
+				{
+					gameCharXInRange = (currentFox.xPos > drawTerrain.currentPlatforms[currentFox.movingData.platformData.platformIdx].platformStart &&
+										currentFox.xPos < drawTerrain.currentPlatforms[currentFox.movingData.platformData.platformIdx].platformEnd);
+				
+					if(gameCharXInRange == false)
+					{
+						currentFox.movingData.platformData.onPlatform = false;
+						currentFox.foxDirectionSet = false;
+						currentFox.isFalling = true;
+					}
+				}
+
+				//make player fall off cloud if out of range
+				if(currentFox.movingData.cloudData.onCloud)
+				{
+					cloudXLeft = clouds.cloudsArray[currentFox.movingData.cloudData.cloudIdx].xPos + 15
+					cloudXRight = clouds.cloudsArray[currentFox.movingData.cloudData.cloudIdx].xPos + 175
+
+					gameCharXInRange = (currentFox.xPos > cloudXLeft &&
+										currentFox.xPos < cloudXRight);
+
+					if(gameCharXInRange == false)
+					{
+						currentFox.movingData.cloudData.onCloud = false;
+						currentFox.foxDirectionSet = false;
+						currentFox.isFalling = true;
+					}
+				}
+
+				//make player fall off ground if out of range
+				if(currentFox.movingData.groundData.onGround)
+				{
+					groundXLeft = levels[currentLevel].groundPositionsArray[currentFox.movingData.groundData.groundIdx][0]
+					groundXRight = levels[currentLevel].groundPositionsArray[currentFox.movingData.groundData.groundIdx][1]
+
+					gameCharXInRange = (currentFox.xPos > groundXLeft &&
+										currentFox.xPos < groundXRight);
+
+					if(gameCharXInRange == false)
+					{
+						currentFox.movingData.groundData.onGround = false;
+						currentFox.foxDirectionSet = false;
+						currentFox.isFalling = true;
+					}
+				}
+
+				//code to move foxes
+				if(currentFox.isFalling && currentFox.isDead == false)
+				{
+					currentFox.yPos += currentCave.foxSpeed
+					if(currentFox.yPos > height)
+					{
+						currentCave.animation.isAnimating = true;
+						currentFox.xPos = currentCave.xPos
+						currentFox.yPos = currentCave.yPos
+						currentFox.direction = currentCave.direction
+						currentFox.foxDirectionSet = true;
+						currentFox.isFalling = false
+					}
+				}
+				else if(currentFox.isDead == true)
+				{
+					currentFox.yPos += currentCave.foxSpeed * 2
+					if(currentFox.yPos > resizeCanvasData.currentHeight + heightPos)
+					{
+						currentCave.caveFoxesArray.splice(foxIdx, 1)
+					}
+				}
+				else
+				{
+					if(currentFox.direction == "left" && currentFox.isOutside)
+					{
+						currentFox.xPos -= currentCave.foxSpeed
+					}
+					else if(currentFox.direction == "right" && currentFox.isOutside)
+					{
+						currentFox.xPos += currentCave.foxSpeed
+					}
+				}
+			}
+		}
+	},
+
+	checkFoxKilled: function(currentFox)
+	{
+		jumpedOnY = currentFox.yPos - (95 * s)
+		jumpedOnXRight= currentFox.xPos + (85 * s)
+		jumpedOnXLeft = currentFox.xPos - (60 * s)
+
+		xCharacter = rabbitCharacter.realWorldPos
+		yCharacter = rabbitCharacter.getFeetPos() - heightPos
+ 		
+		yHeightThreshold = 8
+
+		xInRange = (xCharacter > jumpedOnXLeft) && (xCharacter < jumpedOnXRight)
+		yInRange = abs(yCharacter - jumpedOnY) < yHeightThreshold
+
+		if(xInRange && yInRange)
+		{
+			return true
+		}
+	},
+
+	legData: 
+	{
+		//initialize fox data used to control walking animation
+		rightFootForward: true,
+		backLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null,  innerLegHeight: null},
+		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
+	},
+
+	foxSize: 0.7,
+
+	drawFoxes: function ()
+	{
+		s = this.foxSize
+
+		//control walking animation
+		if(this.legData.rightFootForward == true && frameCount % 7 == 0)
+		{
+			this.legData.backLegs.outerLegHeight = 28 * s;
+			this.legData.backLegs.innerLegHeight = 34 * s;
+			this.legData.frontLegs.outerLegHeight = 34 * s;
+			this.legData.frontLegs.innerLegHeight = 28 * s;
+			this.legData.rightFootForward = false;
+		}
+		else if(this.legData.rightFootForward == false && frameCount % 7 == 0)
+		{
+			this.legData.backLegs.outerLegHeight = 34 * s;
+			this.legData.backLegs.innerLegHeight = 28 * s;
+			this.legData.frontLegs.outerLegHeight = 28 * s;
+			this.legData.frontLegs.innerLegHeight = 34 * s;
+			this.legData.rightFootForward = true;
+		}
+
+		
+		//go through caves and draw foxes
+		for(caveIdx = 0; caveIdx < this.caves.length; caveIdx++)
+			for(foxIdx = this.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+			{
+
+				//update x and y with scrollPos and height Pos
+				x = this.caves[caveIdx].caveFoxesArray[foxIdx].xPos
+				y = this.caves[caveIdx].caveFoxesArray[foxIdx].yPos
+
+				drawFoxBool = this.caves[caveIdx].caveFoxesArray[foxIdx].isOutside == true
+
+				if(this.caves[caveIdx].caveFoxesArray[foxIdx].isFalling)
+				{
+					this.caves[caveIdx].caveFoxesArray[foxIdx].direction = "front"
+				}
+				
+				if(this.caves[caveIdx].caveFoxesArray[foxIdx].direction == "right" && drawFoxBool)
+				{
+					push();
+					translate(0, -225 * s);
+
+					//tail colors
+					fill(this.foxColors.darkFurLight)
+					beginShape()
+						vertex(x - (60 * s), y + (152 * s));
+						vertex(x - (95 * s), y + (154 * s));
+						vertex(x - (120 * s), y + (195 * s));
+						vertex(x - (80 * s), y + (165 * s));
+						vertex(x - (60 * s), y + (158 * s));
+					endShape()
+
+					fill(this.foxColors.darkFurDark)
+					beginShape()
+						vertex(x - (60 * s), y + (164 * s));
+						vertex(x - (75 * s), y + (185 * s));
+						vertex(x - (120 * s), y + (195 * s));
+						vertex(x - (80 * s), y + (165 * s));
+						vertex(x - (60 * s), y + (158 * s));
+					endShape()
+
+					fill(this.foxColors.highlights)
+					beginShape()
+						vertex(x - (120 * s), y + (195 * s));
+						vertex(x - (108 * s), y + (175 * s));
+						vertex(x - (97 * s), y + (190 * s));
+					endShape()
+
+					//tail
+					noFill();
+					beginShape();
+						vertex(x - (60 * s), y + (152 * s));
+						vertex(x - (95 * s), y + (154 * s));
+						vertex(x - (120 * s), y + (195 * s));
+						vertex(x - (75 * s), y + (185 * s));
+						vertex(x - (60 * s), y + (164 * s));
+					endShape();
+
+					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //body
+
+					//inner legs
+					fill(this.foxColors.darkFurDark)
+					rect(x - (50 * s), y + (190 * s), 15 * s, this.legData.backLegs.innerLegHeight);
+					rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
+					
+					//inner leg styling
+					fill(this.foxColors.outlineColor)
+					rect(x - (50 * s), y + (180 * s) + this.legData.backLegs.innerLegHeight, 15 * s, 10 * s);
+					rect(x + (30 * s), y + (180 * s) + this.legData.frontLegs.innerLegHeight, 15 * s, 10 * s);
+
+
+					fill(this.foxColors.darkFurDark)
+					//outer legs
+					rect(x - (60 * s), y + (190 * s), 15 * s, this.legData.backLegs.outerLegHeight);
+					rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
+
+					//outer leg styling
+					fill(this.foxColors.outlineColor)
+					rect(x - (60 * s), y + (175 * s) + this.legData.backLegs.outerLegHeight, 15 * s, 15 * s);
+					rect(x + (20 * s), y + (175 * s) + this.legData.frontLegs.outerLegHeight, 15 * s, 15 * s);
+
+					//body colors
+					fill(this.foxColors.darkFurDark)
+					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //bottom
+					fill(this.foxColors.darkFurLight)
+					rect(x - (60 * s), y + (150 * s), 105 * s, 10 * s); //top
+
+					//body white belly
+					fill(this.foxColors.highlights);
+					beginShape();
+						vertex(x - (45 * s), y + (195 * s)) // bottom left
+						vertex(x + (3 * s), y + (195 * s)) // bottom right
+						vertex(x, y + (190 * s)) // top right
+						vertex(x - (42 * s), y + (190 * s)) // top left
+					endShape();
+
+					//left ear
+					fill(this.foxColors.darkFurDark)
+					beginShape();
+						vertex(x + (10 * s), y + (100 * s)) // top 
+						vertex(x + (10 * s), y + (120 * s)) // bottom
+						vertex(x + (30 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+
+					//right ear
+					beginShape();
+						vertex(x + (80 * s), y + (100 * s)) // top
+						vertex(x + (80 * s), y + (120 * s)) // bottom
+						vertex(x + (60 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+
+					//face colors
+					fill(color(this.foxColors.darkFurLight))
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (155 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+
+					fill(color(this.foxColors.highlights))
+					beginShape();
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+						vertex(x + (45 * s), y + (155 * s)) //top middle
+					endShape(CLOSE);
+
+					//face
+					noFill();
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+
+
+					stroke(color(this.foxColors.outlineColor)); //black outline color
+					strokeWeight(4 * s); //black outline width
+					//features
+					rect(x + (32 * s), y + (140 * s), 2 * s, 5 * s); //left eye
+					rect(x + (55 * s), y + (140 * s), 2 * s, 5 * s); //right eye
+					rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
+
+					pop();
+				}
+				else if(this.caves[caveIdx].caveFoxesArray[foxIdx].direction == "left" && drawFoxBool)
+				{
+					translateHeadBy = -105 * s
+					translateBellyBy = 18 * s
+
+					noStroke();
+
+					push();
+					translate(0, -225 * s);
+
+					//tail colors
+					fill(this.foxColors.darkFurLight)
+					beginShape()
+						vertex(x + (45 * s), y + (152 * s));
+						vertex(x + (80 * s), y + (154 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (65 * s), y + (165 * s));
+						vertex(x + (45 * s), y + (158 * s));
+					endShape()
+
+					fill(this.foxColors.darkFurDark)
+					beginShape()
+						vertex(x + (45 * s), y + (164 * s));
+						vertex(x + (60 * s), y + (185 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (65 * s), y + (165 * s));
+						vertex(x + (45 * s), y + (158 * s));
+					endShape()
+
+					fill(this.foxColors.highlights)
+					beginShape()
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (93 * s), y + (175 * s));
+						vertex(x + (82 * s), y + (190 * s));
+					endShape()
+
+					//tail
+					noFill();
+					beginShape();
+						vertex(x + (45 * s), y + (152 * s));
+						vertex(x + (80 * s), y + (154 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (60 * s), y + (185 * s));
+						vertex(x + (45 * s), y + (164 * s));
+					endShape();
+
+					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //body
+
+					//inner legs
+					fill(this.foxColors.darkFurDark)
+					rect(x - (50 * s), y + (190 * s), 15 * s, this.legData.backLegs.innerLegHeight);
+					rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
+					
+					//inner leg styling
+					fill(this.foxColors.outlineColor)
+					rect(x - (50 * s), y + (180 * s) + this.legData.backLegs.innerLegHeight, 15 * s, 10 * s);
+					rect(x + (30 * s), y + (180 * s) + this.legData.frontLegs.innerLegHeight, 15 * s, 10 * s);
+
+					fill(this.foxColors.darkFurDark)
+
+					//outer legs
+					rect(x - (60 * s), y + (190 * s), 15 * s, this.legData.backLegs.outerLegHeight);
+					rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
+
+					//outer leg styling
+					fill(this.foxColors.outlineColor)
+					rect(x - (60 * s), y + (175 * s) + this.legData.backLegs.outerLegHeight, 15 * s, 15 * s);
+					rect(x + (20 * s), y + (175 * s) + this.legData.frontLegs.outerLegHeight, 15 * s, 15 * s);
+
+					//body colors
+					fill(this.foxColors.darkFurDark)
+					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //bottom
+					fill(this.foxColors.darkFurLight)
+					rect(x - (60 * s), y + (150 * s), 105 * s, 10 * s); //top
+
+					push();
+					translate(translateBellyBy, 0)
+					//body white belly
+					fill(this.foxColors.highlights);
+					beginShape();
+						vertex(x - (45 * s), y + (195 * s)) // bottom left
+						vertex(x + (3 * s), y + (195 * s)) // bottom right
+						vertex(x, y + (190 * s)) // top right
+						vertex(x - (42 * s), y + (190 * s)) // top left
+					endShape();
+
+					pop();
+					
+					push();
+					translate(translateHeadBy, 0)
+
+					//left ear
+					fill(this.foxColors.darkFurDark)
+					beginShape();
+						vertex(x + (10 * s), y + (100 * s)) // top 
+						vertex(x + (10 * s), y + (120 * s)) // bottom
+						vertex(x + (30 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+
+					//right ear
+					beginShape();
+						vertex(x + (80 * s), y + (100 * s)) // top
+						vertex(x + (80 * s), y + (120 * s)) // bottom
+						vertex(x + (60 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+
+					//face colors
+					fill(color(this.foxColors.darkFurLight))
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (155 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+
+					fill(color(this.foxColors.highlights))
+					beginShape();
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+						vertex(x + (45 * s), y + (155 * s)) //top middle
+					endShape(CLOSE);
+
+					//face
+					noFill();
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+
+					stroke(color(this.foxColors.outlineColor)); //black outline color
+					strokeWeight(4 * s); //black outline width
+
+					//features
+					rect(x + (32 * s), y + (140 * s), 2 * s, 5 * s); //left eye
+					rect(x + (55 * s), y + (140 * s), 2 * s, 5 * s); //right eye
+					rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
+
+					pop();
+
+					pop();
+				}
+				else if(this.caves[caveIdx].caveFoxesArray[foxIdx].direction == "front" && drawFoxBool)
+				{
+					translateHeadBy = -45 * s
+					translateTailByX = -22 * s
+					translateTailByY = 55 * s
+	
+					noStroke();
+					push();
+					translate(0, -225 * s)
+					push();
+					push()
+					translate(translateTailByX, translateTailByY)
+	
+					//tail colors
+					fill(this.foxColors.darkFurDark)
+					beginShape()
+						vertex(x + (45 * s), y + (152 * s));
+						vertex(x + (80 * s), y + (154 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (65 * s), y + (165 * s));
+						vertex(x + (45 * s), y + (158 * s));
+					endShape()
+	
+					fill(this.foxColors.darkFurLight)
+					beginShape()
+						vertex(x + (45 * s), y + (164 * s));
+						vertex(x + (60 * s), y + (185 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (65 * s), y + (165 * s));
+						vertex(x + (45 * s), y + (158 * s));
+					endShape()
+	
+					fill(this.foxColors.highlights)
+					beginShape()
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (95 * s), y + (175 * s));
+						vertex(x + (80 * s), y + (190 * s));
+					endShape()
+	
+					//tail
+					noFill();
+					beginShape();
+						vertex(x + (45 * s), y + (152 * s));
+						vertex(x + (80 * s), y + (154 * s));
+						vertex(x + (105 * s), y + (195 * s));
+						vertex(x + (60 * s), y + (185 * s));
+						vertex(x + (45 * s), y + (164 * s));
+					endShape();
+					pop();
+	
+					fill(this.foxColors.darkFurLight);
+	
+					//main body
+					rect(x - (25 * s), y + (150 * s), 50 * s, 70 * s); //body
+	
+					fill(this.foxColors.darkFurDark)
+					//front legs
+					rect(x - (35 * s), y + (186 * s), 20 * s, 20 * s); // front left leg
+					rect(x + (15 * s), y + (186 * s), 20 * s, 20 * s); // front right leg
+	
+					fill(this.foxColors.highlights)
+					rect(x - (10 * s), y + (190 * s), 20 * s, 30 * s); //body
+	
+					translate(translateHeadBy, 0)
+	
+					//left ear
+					fill(this.foxColors.darkFurDark)
+					beginShape();
+						vertex(x + (10 * s), y + (100 * s)) // top 
+						vertex(x + (10 * s), y + (120 * s)) // bottom
+						vertex(x + (30 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+	
+					//right ear
+					beginShape();
+						vertex(x + (80 * s), y + (100 * s)) // top
+						vertex(x + (80 * s), y + (120 * s)) // bottom
+						vertex(x + (60 * s), y + (120 * s)) // bottom inner
+					endShape(CLOSE);
+	
+					//face colors
+					noStroke();
+					fill(color(this.foxColors.darkFurLight))
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (155 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+	
+					fill(color(this.foxColors.highlights))
+					beginShape();
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+						vertex(x + (45 * s), y + (155 * s)) //top middle
+					endShape(CLOSE);
+	
+					//face
+					noFill();
+					beginShape();
+						vertex(x + (10 * s), y + (120 * s)) //top left
+						vertex(x + (80 * s), y + (120 * s))	//top right
+						vertex(x + (90 * s), y + (145 * s)) //right middle
+						vertex(x + (45 * s), y + (180 * s)) //bottom point
+						vertex(x, y + (145 * s)) //left middle
+					endShape(CLOSE);
+	
+					stroke(color(this.foxColors.outlineColor)); //black outline color
+					strokeWeight(4 * s); //black outline width
+					//features
+					rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
+					if(this.caves[caveIdx].caveFoxesArray[foxIdx].isDead == true)
+					{
+						push();
+						translate(45 * s, -12 * s)
+
+						//left eye (1/2)
+						push();
+						angleMode(DEGREES);
+						translate(x - (25 * s), y + (145 * s));
+						rotate(-45);
+						rect(0, 0, 2 * s, 20 * s);
+						pop();
+	
+						//left eye (2/2)
+						push();
+						angleMode(DEGREES);
+						translate(x - (10 * s), y + (143 * s));
+						rotate(45);
+						rect(0, 0, 2 * s, 20 * s);
+						pop();
+	
+						//right eye (1/2)
+						push();
+						angleMode(DEGREES);
+						translate(x + (10 * s), y + (145 * s));
+						rotate(-45);
+						rect(0, 0, 2 * s, 20 * s);
+						pop();
+	
+						//right eye (2/2)
+						push();
+						angleMode(DEGREES);
+						translate(x + (25 * s), y + (143 * s));
+						rotate(45);
+						rect(0, 0, 2 * s, 20 * s);
+						pop();
+						pop();
+					}
+					else
+					{
+						rect(x + (32 * s), y + (140 * s), 2 * s, 5 * s); //left eye
+						rect(x + (55 * s), y + (140 * s), 2 * s, 5 * s); //right eye	
+					}
+					pop();
+					pop();
+				}
+			}
+	}
+}
+
 //--------------------CONTROLS POINTS SHOWING UP WHEN ITEMS COLLECTED--------------------//
 animatePointsCollected = 
 {
@@ -470,6 +1390,12 @@ updateYObjStart = function ()
 	{
 		levels[currentLevel].enemyPositionsArray[i].yPos += resizeCanvasData.yObjStart
 	}
+	for(i = 0; i < levels[currentLevel].cavesData.length; i++)
+	{
+		levels[currentLevel].cavesData[i].yPos += resizeCanvasData.yObjStart
+	}
+	//update rabbit ypos
+	levels[currentLevel].characterYStart += resizeCanvasData.yObjStart
 }
 
 //--------------------LEVELS OBJECT (STORES LEVEL DATA)--------------------//
@@ -480,7 +1406,7 @@ levels =
 		//vital char data 
 		characterYStartHeightPos: 0,
 		characterXStartScrollPos: 0,
-		characterYStart: 485,
+		characterYStart: 322,
 		characterXStart: 520,
 		characterSize: 0.5,
 		heightPosTop: null,
@@ -489,6 +1415,8 @@ levels =
 		scrollPosRight: null,
 		skyColor: [137,207,240],
 		bulletInRangeValue: 20,
+		//fox data
+		cavesData: [{xPos: 1100, yPos: 94, size: 0.5, direction: "left", numOfFoxes: 200, foxSpeed: 5, foxGap: 10, maxNumOfLives: 4, maxNumberOfFoxesOut: 50}],
 		//carrot data
 		carrotColor: [246, 118, 34],
 		carrotStemColor: [35, 92, 70],
@@ -515,7 +1443,8 @@ levels =
 		canyonColor: [137,207,240],
 		//platform data
 		platformPositionsArray:
-			[{yPos: 200, platformStart: 2800, platformEnd: 3300}],
+			[{yPos: 200, platformStart: 2800, platformEnd: 3300},
+			{yPos: 94, platformStart: 800, platformEnd: 1400}],
 		platformGrassLight: [19,232,83],
 		platformGrassDark: [12,86,25],
 		platformDirtLight: [77,50,32],
@@ -526,7 +1455,8 @@ levels =
 		cloudPositionsArray: 
 			[{xPos: 1200, yPos: 200, direction: "right", speed: [4, 4], maxLeft: 0, maxRight: 600},
 			{xPos: 1300, yPos: 0, direction: "right", speed: [3, 3], maxLeft: 0, maxRight: 500},
-			{xPos: 1500, yPos: -200, direction: "right", speed: [2, 2], maxLeft: 0, maxRight: 100}],
+			{xPos: 1500, yPos: -200, direction: "right", speed: [2, 2], maxLeft: 0, maxRight: 100},
+			{xPos: 680, yPos: 250, direction: "right", speed: [1, 2], maxLeft: 0, maxRight: 10}],
 		//mountain data
 		sideMountainsColor: [126,116,116],
 		middleMountainColor: [196,182,182],
@@ -728,9 +1658,10 @@ child =
 
 		if(this.drawChildBool)
 		{
-			stroke(0); //black outline color
-			strokeWeight(5 * s); //black outline width
-			fill(205,133,63); // body color
+
+			stroke(statsBoard.childrenData.outlineColor); //black outline color
+			strokeWeight(4 * s); //black outline width
+			fill(statsBoard.childrenData.darkColor); // body color
 
 			push();
 			translate(0, -160 * s)
@@ -739,8 +1670,8 @@ child =
 			translate(x - (25 * s) + ((20 * s) / 2), 
 					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
 			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
-			fill(160,82,45); // light color
-			stroke(160,82,45); // light color
+			fill(statsBoard.childrenData.lightColor); // light color
+			stroke(statsBoard.childrenData.lightColor); // light color
 			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
 			pop();
 
@@ -748,8 +1679,8 @@ child =
 			translate(x + (8 * s) + ((20 * s) / 2), 
 					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
 			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
-			fill(160,82,45); // light color
-			stroke(160,82,45); // light color
+			fill(statsBoard.childrenData.lightColor); // light color
+			stroke(statsBoard.childrenData.lightColor); // light color
 			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
 			pop();
 
@@ -765,8 +1696,8 @@ child =
 			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
 			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
 
-			fill(160,82,45); // light color
-			stroke(160,82,45); // light color
+			fill(statsBoard.childrenData.lightColor); // light color
+			stroke(statsBoard.childrenData.lightColor); // light color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			pop();	
 		}
@@ -1268,7 +2199,7 @@ statsBoard =
 	drawRabbit: function(x, y, s, outlineColor, lightColor, darkColor)
 	{
 		stroke(outlineColor); //black outline color
-		strokeWeight(5 * s); //black outline width
+		strokeWeight(4 * s); //black outline width
 		fill(darkColor); // body color
 
 		push();
@@ -1455,12 +2386,18 @@ mountains =
 //--------------------CLOUDS OBJECT--------------------//
 clouds =
 {
-	updateCharacterOnCLoud: function (cloudIdx)
+	updateAnimalsOnCloud: function (cloudIdx)
 	{
-		gameCharXInRange = (rabbitCharacter.realWorldPos > this.cloudsArray[cloudIdx].xPos + 15 &&
-							rabbitCharacter.realWorldPos < this.cloudsArray[cloudIdx].xPos + 175);
 
-		gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (this.cloudsArray[cloudIdx].yPos + heightPos + 60)) < 5
+		cloudXLeft = this.cloudsArray[cloudIdx].xPos + 15
+		cloudXRight = this.cloudsArray[cloudIdx].xPos + 175
+		cloudY = this.cloudsArray[cloudIdx].yPos + heightPos + 60
+
+		//update character on clouds
+		gameCharXInRange = (rabbitCharacter.realWorldPos > cloudXLeft &&
+							rabbitCharacter.realWorldPos < cloudXRight);
+
+		gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (cloudY)) < 5
 
 		onCloud = gameCharXInRange && gameCharYInRange && rabbitCharacter.jumpingData.goingUpwards == false
 		if(onCloud)
@@ -1469,6 +2406,42 @@ clouds =
 			rabbitCharacter.onFloor = true;
 			rabbitCharacter.ridingCloudData.cloudRiding = cloudIdx;
 		}
+
+		//check for whether foxes are on clouds
+		for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+		{
+			for(foxIdx = foxes.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+			{
+				currentFox = foxes.caves[caveIdx].caveFoxesArray[foxIdx]
+
+
+				foxXInRange = (currentFox.xPos > cloudXLeft &&
+								currentFox.xPos < cloudXRight)
+
+				foxYInRange = abs((currentFox.yPos + heightPos) - cloudY) < 8
+
+				onCloud = foxXInRange && foxYInRange
+
+				if(onCloud && currentFox.isDead == false)
+				{
+					currentFox.movingData.cloudData.onCloud = true
+					currentFox.movingData.cloudData.cloudIdx = cloudIdx
+					currentFox.isFalling = false
+
+					if(random(0, 1) > 0.5 && currentFox.foxDirectionSet == false)
+					{
+						currentFox.direction = "left"
+					}
+					else if(currentFox.foxDirectionSet == false)
+					{
+						currentFox.direction = "right"
+					}
+
+					currentFox.foxDirectionSet = true
+				}
+			}
+		}
+
 	},
 
 	updateCloudObjects: function (cloudIdx)
@@ -1628,7 +2601,7 @@ clouds =
 	{
 		for(cloudIdx = 0; cloudIdx < this.cloudsArray.length; cloudIdx++)
 		{
-			this.updateCharacterOnCLoud(cloudIdx)
+			this.updateAnimalsOnCloud(cloudIdx)
 			this.updateCloudObjects(cloudIdx)
 
 			//handle randomized clouds
@@ -1924,7 +2897,8 @@ drawTerrain =
 
 	drawCurrentTerrain: function (currentGround, currentPlatforms)
 	{
-		this.updateCharOnPlatform()
+		this.updateFoxesOnGround()
+		this.updateAnimalsOnPlatforms()
 
 		for(rectIdx = 0; rectIdx < currentGround.length; rectIdx++)
 		{
@@ -1944,10 +2918,11 @@ drawTerrain =
 		}
 	},
 
-	updateCharOnPlatform: function ()
+	updateAnimalsOnPlatforms: function ()
 	{
 		for(platformIdx = 0; platformIdx < this.currentPlatforms.length; platformIdx++)
 		{
+			//check for whether character is on platforms
 			gameCharXInRange = (rabbitCharacter.realWorldPos > this.currentPlatforms[platformIdx].platformStart &&
 								rabbitCharacter.realWorldPos < this.currentPlatforms[platformIdx].platformEnd);
 
@@ -1963,6 +2938,86 @@ drawTerrain =
 				rabbitCharacter.platformData.onPlatform = true;
 				rabbitCharacter.onFloor = true;
 				rabbitCharacter.platformData.currentPlatformData = platformIdx;
+			}
+
+			//check for whether foxes are on platforms
+			for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+			{
+				for(foxIdx = foxes.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+				{
+					currentFox = foxes.caves[caveIdx].caveFoxesArray[foxIdx]
+
+					foxXInRange = (currentFox.xPos > this.currentPlatforms[platformIdx].platformStart) &&
+									(currentFox.xPos < this.currentPlatforms[platformIdx].platformEnd)
+
+					foxYInRange = abs((currentFox.yPos + heightPos) - platformY) < 8
+
+					onPlatform = foxXInRange && foxYInRange
+
+					if(onPlatform && currentFox.isDead == false)
+					{
+						currentFox.movingData.platformData.onPlatform = true
+						currentFox.movingData.platformData.platformIdx = platformIdx
+						currentFox.isFalling = false
+
+						if(random(0, 1) > 0.5 && currentFox.foxDirectionSet == false)
+						{
+							currentFox.direction = "left"
+						}
+						else if(currentFox.foxDirectionSet == false)
+						{
+							currentFox.direction = "right"
+						}
+
+						currentFox.foxDirectionSet = true
+					}
+				}
+			}
+		}
+	},
+
+	updateFoxesOnGround: function ()
+	{
+		//loop through all ground objects
+
+		for(groundSectionIdx = 0; groundSectionIdx < levels[currentLevel].groundPositionsArray.length; groundSectionIdx++)
+		{
+			currentGroundStart = levels[currentLevel].groundPositionsArray[groundSectionIdx][0]
+			currentGroundEnd = levels[currentLevel].groundPositionsArray[groundSectionIdx][1]
+
+			//loop through caves and foxes to check if they're on the ground
+			for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+			{
+				for(foxIdx = foxes.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
+				{
+					currentFox = foxes.caves[caveIdx].caveFoxesArray[foxIdx]
+
+					foxXInRange = (currentFox.xPos > currentGroundStart &&
+									currentFox.xPos < currentGroundEnd)
+
+					foxYInRange = abs((currentFox.yPos + heightPos) - (floorPos_y + heightPos)) < 8
+
+					onGround = foxXInRange && foxYInRange
+
+
+					if(onGround && currentFox.isDead == false)
+					{
+						currentFox.movingData.groundData.onGround = true
+						currentFox.movingData.groundData.groundIdx = groundSectionIdx
+						currentFox.isFalling = false
+
+						if(random(0, 1) > 0.5 && currentFox.foxDirectionSet == false)
+						{
+							currentFox.direction = "left"
+						}
+						else if(currentFox.foxDirectionSet == false)
+						{
+							currentFox.direction = "right"
+						}
+
+						currentFox.foxDirectionSet = true
+					}
+				}
 			}
 		}
 	}
@@ -2170,6 +3225,7 @@ rabbitCharacter =
 				}
 			}
 		}
+
 		//control jumping animation
 		if(this.jumpingData.currentlyJumping)
 		{	
@@ -2224,24 +3280,22 @@ rabbitCharacter =
 
 		//control walking animation
 		if(this.legData.rightFootForward == true && frameCount % 7 == 0)
-			{
-				this.legData.backLegs.outerLegHeight = 28 * s;
-				this.legData.backLegs.innerLegHeight = 34 * s;
-				this.legData.frontLegs.outerLegHeight = 34 * s;
-				this.legData.frontLegs.innerLegHeight = 28 * s;
-				this.legData.rightFootForward = false;
-			}
-			else if(this.legData.rightFootForward == false && frameCount % 7 == 0)
-			{
-				this.legData.backLegs.outerLegHeight = 34 * s;
-				this.legData.backLegs.innerLegHeight = 28 * s;
-				this.legData.frontLegs.outerLegHeight = 28 * s;
-				this.legData.frontLegs.innerLegHeight = 34 * s;
-				this.legData.rightFootForward = true;
-			}
+		{
+			this.legData.backLegs.outerLegHeight = 28 * s;
+			this.legData.backLegs.innerLegHeight = 34 * s;
+			this.legData.frontLegs.outerLegHeight = 34 * s;
+			this.legData.frontLegs.innerLegHeight = 28 * s;
+			this.legData.rightFootForward = false;
+		}
+		else if(this.legData.rightFootForward == false && frameCount % 7 == 0)
+		{
+			this.legData.backLegs.outerLegHeight = 34 * s;
+			this.legData.backLegs.innerLegHeight = 28 * s;
+			this.legData.frontLegs.outerLegHeight = 28 * s;
+			this.legData.frontLegs.innerLegHeight = 34 * s;
+			this.legData.rightFootForward = true;
+		}
 	
-
-		
 		//control graphics of character
 		if(this.userInput.direction == "right")
 		{	
@@ -2263,7 +3317,7 @@ rabbitCharacter =
 				}
 			}
 			stroke(0); //black outline color
-			strokeWeight(5 * s); //black outline width
+			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 			
 			//main body part 1/2
@@ -2277,7 +3331,7 @@ rabbitCharacter =
 				rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
 				rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
 				noStroke();
-				rect(x - (42 * s), y + (153 * s), 85 * s, 55 * s); //body white inner circle (covers black outline of legs)
+				rect(x - (43 * s), y + (152 * s), 86 * s, 56 * s); //body white inner rect (covers black outline of legs)
 			}
 			else if(this.userInput.airCondition == "jumping")
 			{
@@ -2288,7 +3342,7 @@ rabbitCharacter =
 			}
 			
 			stroke(0);
-			strokeWeight(5 * s);
+			strokeWeight(4 * s);
 
 			push();
 			translate(x + (10 * s) + ((20 * s) / 2), 
@@ -2343,7 +3397,7 @@ rabbitCharacter =
 				}
 			}
 			stroke(0); //black outline color
-			strokeWeight(5 * s); //black outline width
+			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 			
 			//main body part 1/2
@@ -2357,7 +3411,7 @@ rabbitCharacter =
 				rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
 				rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
 				noStroke();
-				rect(x - (42 * s), y + (153 * s), 85 * s, 55 * s); //body white inner circle (covers black outline of legs)
+				rect(x - (43 * s), y + (152 * s), 86 * s, 56 * s); //body white inner rect (covers black outline of legs)
 			}
 			else if(this.userInput.airCondition == "jumping")
 			{
@@ -2367,7 +3421,7 @@ rabbitCharacter =
 				rect(x + (20 * s), y + (190 * s), 15 * s, 15 * s);
 			}
 			stroke(0);
-			strokeWeight(5 * s);
+			strokeWeight(4 * s);
 
 			push();
 			translate(x - (30 * s) + ((20 * s) / 2), 
@@ -2405,7 +3459,7 @@ rabbitCharacter =
 		else if(this.userInput.direction == "front")
 		{
 			stroke(0); //black outline color
-			strokeWeight(5 * s); //black outline width
+			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 
 			push();
