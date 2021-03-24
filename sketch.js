@@ -6,7 +6,9 @@ var heightPos;
 var currentLevel;
 var NESfont;
 var carrotCollectedSound;
-var gameLoopSound
+var gameLoopSound;
+var currentFrameRate = 0;
+var editingMode;
 
 function preload()
 {
@@ -20,13 +22,14 @@ function preload()
 
 function setup()
 {
+	editingMode = false
 	currentLevel = 0
 	createCanvas(windowWidth, windowHeight);
 	resizeCanvasData.currentWidth = windowWidth
 	resizeCanvasData.currentHeight = windowHeight
 	resizeCanvasData.yCanvasTranslate = 0
 	resizeCanvasData.yObjStart = (resizeCanvasData.currentHeight * 3/4) - 432
-	messages.updateMessageDimensions()
+	gameOver.updateMessageDimensions()
 	floorPos_y = height * 3/4;
 	statsBoard.updateTotals()
 	updateYObjStart()
@@ -37,8 +40,10 @@ function setup()
 
 function startGame()
 {
+	level = levels[currentLevel]
 
-	rabbitCharacter.setCharData()
+	scrollPos = level.characterXStartScrollPos;
+	heightPos = level.characterYStartHeightPos;
 	
 	respawn()
 	
@@ -48,6 +53,8 @@ function startGame()
 	canyons.canyonsArray = [];
 	enemies.enemiesArray = [];
 	foxes.caves = [];
+	powerups.powerupsArray = [];
+	birds.clusters = [];
 	statsBoard.score = 0;
 	statsBoard.lives.current = 1;
 	statsBoard.enemies.totalKilled = 0;
@@ -58,15 +65,14 @@ function startGame()
 	updateCanvasData()
 
 	statsBoard.updateCurrentLevel()
-
-	level = levels[currentLevel]
-
-	scrollPos = level.characterXStartScrollPos;
-	heightPos = level.characterYStartHeightPos;
-	
+	levelText = level.levelText
 
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	foxes.addCaves(level.cavesData)
+
+	messages.addMessages(level.messagesData)
+	birds.settings = {startingLeft: -100, startingRight: resizeCanvasData.currentWidth + 100, frequency: 5, clusterSpeed: 5, flapSpeed: 8, xRandom: 100, yRandom: 150, numOfBirds: 30, scale: 0.2}
+	birds.generateBirdClusters([{yPos: 300}, {yPos: 600}])
 
 	skyColor = color(level.skyColor);
 	carrots.setCarrotColors(color(level.carrotColor), color(level.carrotStemColor),)
@@ -75,6 +81,8 @@ function startGame()
 	lives.color = color(level.livesColor)
 	heartsArray = level.heartPositionsArray
 	lives.addHearts(heartsArray)
+	powerupsArray = level.powerupPositionsArray
+	powerups.addPowerups(powerupsArray)
 	currentGround = drawTerrain.generateLayeredGround(color(level.grassLight),
 								color(level.grassDark),
 								color(level.dirtLight),
@@ -116,9 +124,10 @@ function startGame()
 
 function draw()
 {
-	// logFrameRate(50, 70)	
-	statsBoard.handlePlayerDeath()
 
+
+	statsBoard.handlePlayerDeath()
+	
 	push();
 	translate(0, resizeCanvasData.yCanvasTranslate)
 
@@ -126,6 +135,11 @@ function draw()
 	push();
     translate(scrollPos, heightPos);
 	mountains.drawMountains()
+	push();
+	//draw birds plainly
+	translate(-scrollPos, -(heightPos + resizeCanvasData.yCanvasTranslate))
+	birds.drawBirdClusters()
+	pop();
 	trees.drawTrees()
 	canyons.drawCanyons();
 	drawTerrain.drawCurrentTerrain(currentGround, currentPlatforms)
@@ -134,13 +148,15 @@ function draw()
 	enemies.bullets.updateExpiredBullets()
 	enemies.bullets.drawBullets()
 	enemies.drawEnemies()
+	foxes.updateFoxes()
 	foxes.drawCaves()
 	foxes.drawFoxes()
-	foxes.updateFoxes()
 	pop();
 
 	rabbitCharacter.drawRabbit()
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
+	animatePointsCollected.animateActiveAnimations()
+	powerups.updatePowerups()
 
 	//draw collectables in front of character
 	push();
@@ -148,39 +164,61 @@ function draw()
 	carrots.drawCarrots();
 	child.drawChild();
 	lives.drawHearts();
+	powerups.drawPowerups()
+	powerups.drawPowerupsToChar()
 	pop();
 
 	checkOutOfBounds()
 
+	logFrameRate()
+	
 	pop();
-
-	statsBoard.drawBoard()
+	
+	statsBoard.drawBoard(levelText)
 	statsBoard.drawCarrotsToStats()
 	statsBoard.drawHeartsToStats()
 	statsBoard.drawChildrenToStats()
+	birds.updateBirdFlapping()
+	birds.updateClusterRespawn()
+	birds.updateBoundaries()
 
-	animatePointsCollected.animateActiveAnimations()
+	//draw messages in front of stats board
+	push();
+	translate(scrollPos, resizeCanvasData.yCanvasTranslate + heightPos);
+	messages.drawMessages()
+	pop();
 
-	if(messages.drawMessageBool){messages.drawMessage()}
 
+
+	if(gameOver.drawMessageBool){gameOver.drawMessage()}
+
+	
 }
 
 //objects
-
 //--------------------HANDLES RESPAWNING (NOT DEATH)--------------------//
 
 function respawn()
-{
-	scrollPos = 0;
-	heightPos = 0;
+{	
+
+	rabbitCharacter.yPos = levels[currentLevel].characterYStart + heightPos 
 	rabbitCharacter.userInput = {direction: "front", airCondition: "walking"};
-	rabbitCharacter.yPos = levels[currentLevel].characterYStart;
-	rabbitCharacter.xPos = levels[currentLevel].characterXStart;
+	rabbitCharacter.xPos = levels[currentLevel].characterXStart
+	rabbitCharacter.size = levels[currentLevel].characterSize
+
+
 	rabbitCharacter.realWorldPos = levels[currentLevel].characterXStart
 	rabbitCharacter.platformData.onPlatform = false;
 	rabbitCharacter.ridingCloudData.onCloud = false;
+	rabbitCharacter.jumpingData.jumpingDuration = rabbitCharacter.jumpingData.resetJumpDuration
+	rabbitCharacter.onFloor = true
 
-	messages.drawMessageBool = false;
+	
+
+	//disable powerups
+	powerups.deactivatePowerups("both")
+
+	gameOver.drawMessageBool = false;
 	statsBoard.deathHandled = false;
 	rabbitCharacter.isDead = false;
 
@@ -196,7 +234,7 @@ resizeCanvasData =
 }
 
 //--------------------CONTROLS GAME OVER WINDOW--------------------//
-messages = 
+gameOver = 
 {
 	distFromEdgeX: null,
 	distFromEdgeY: null,
@@ -269,7 +307,6 @@ messages =
 
 		//GAME OVER text
 		gameOverTextSize = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 35
-		gameOverYPos = 
 		textSize(gameOverTextSize)
 		textAlign(CENTER);
 		text('GAME OVER', resizeCanvasData.currentWidth/2, fromTop + lineSpacing)
@@ -381,10 +418,165 @@ messages =
 	}
 }
 
+//--------------------CONTROLS MESSAGES--------------------//
+messages =
+{
+
+	messagesArray: [],
+
+	createMessage: function(circleX, circleY, circleRadius, scale, messages)
+	{
+		m = 
+		{
+			circleX: circleX,
+			circleY: circleY,
+			originalX: circleX,
+			originalY: circleY,
+			circleRadius: circleRadius,
+			originalRadius: circleRadius,
+			borderRadius: circleRadius / 2,
+			expanding: false,
+			scale: scale,
+			messages: messages
+		}
+		return m
+	},
+
+	addMessages: function(messagesInput)
+	{
+		for(i = 0; i < messagesInput.length; i++)
+		{
+			currentMessage = messagesInput[i]
+			m = this.createMessage(currentMessage.circleX, currentMessage.circleY, currentMessage.circleRadius, currentMessage.scale, currentMessage.messages)
+			this.messagesArray.push(m)
+		}
+	},
+
+	drawMessages: function ()
+	{
+		for(i = 0; i < this.messagesArray.length; i++)
+		{
+			m = this.messagesArray[i]
+
+
+			//check to see if character is near message
+			if(dist(rabbitCharacter.realWorldPos, rabbitCharacter.yPos + heightPos, m.originalX, m.originalY) < (m.originalRadius * 2))
+			{
+				m.expanding = true
+			}
+			else
+			{
+				m.expanding = false
+			}
+
+			//animate or expand message based on expanding bool
+			decreaseborderCap = m.originalRadius * 0.2
+			decreaseBorderRate = 0.975
+			increaseHeightCap = (m.originalRadius * 7)
+			increaseHeightRate = m.originalRadius/6
+			increaseSizeCap = m.originalRadius * 6
+			increaseSizeRate = 1.047
+			if(m.expanding)
+			{
+				//update radius
+				if(m.borderRadius > decreaseborderCap)
+				{
+					m.borderRadius *= decreaseBorderRate
+				}
+				//update height
+				if(m.circleY > m.originalY - increaseHeightCap)
+				{
+					m.circleY -= increaseHeightRate
+				}
+				//update size
+				if(m.circleRadius < increaseSizeCap)
+				{
+					m.circleRadius *= increaseSizeRate
+				}
+			}
+			else
+			{
+				//update radius
+				if(m.borderRadius < (m.originalRadius / 2))
+				{
+					m.borderRadius *= 1 + (1 - decreaseBorderRate)
+				}
+				else
+				{
+					m.borderRadius = m.circleRadius / 2
+				}
+				//update height
+				if(m.circleY < m.originalY)
+				{
+					m.circleY += increaseHeightRate
+				}
+				else
+				{
+					m.circleY = m.originalY
+				}
+				//update size
+				if(m.circleRadius > m.originalRadius)
+				{
+					m.circleRadius *= 1 + (1 - increaseSizeRate)
+				}
+				else
+				{
+					m.circleRadius = m.originalRadius
+				}
+			}
+
+			x = m.circleX - (m.circleRadius * 0.5)
+			y = m.circleY - (m.circleRadius * 0.5)
+
+			fill(color(this.backgroundColor))
+			stroke(this.strokeColor)
+			strokeWeight(m.originalRadius / 15)
+			rect(x, y, m.circleRadius, m.circleRadius, m.borderRadius)
+
+			//draw out messages
+			currentMessage = m.messages
+
+			for(lineIdx = 0; lineIdx < currentMessage.length; lineIdx++)
+			{
+				currentLine = currentMessage[lineIdx]
+				if(m.circleRadius == m.originalRadius)
+				{
+					fill(0, 0, 0)
+					noStroke();
+					textSize(m.circleRadius * 0.7)
+					textAlign(CENTER);
+					text("?", m.originalX + (m.originalRadius / 14), m.originalY + (m.originalRadius / 4))
+				}
+				else
+				{
+					push();
+					noStroke();
+					translate(m.circleX, m.circleY)
+					currentOpacity = constrain(map(m.circleRadius, m.originalRadius, increaseSizeCap, -200, 255), 0, 255)
+					fill(currentLine.textColor[0], currentLine.textColor[1], currentLine.textColor[2], currentOpacity)
+					textSize(m.circleRadius * 0.1)
+					textAlign(CENTER);
+
+
+					currentMessageY = map(m.circleY, m.originalY, increaseHeightCap - m.originalY, m.originalY, currentLine.yPos)
+
+					text(currentLine.text, currentLine.xPos, currentMessageY - m.originalY)
+					pop();
+				}
+			}
+			
+		}
+	},
+
+	backgroundColor: [255],
+	strokeColor: [230]
+
+}
+
 //--------------------HANDLES FOXES & CAVES--------------------//
 foxes = 
 {
-	createCave: function (xPos, yPos, size, direction, numOfFoxes, foxSpeed, foxGap, maxNumOfLives, maxNumberOfFoxesOut)
+	createCave: function (xPos, yPos, size, direction, numOfFoxes, foxSpeed, foxGap, maxNumOfLives, maxNumberOfFoxesOut, dropPowerupType)
 	{
 		c = 
 		{
@@ -392,12 +584,14 @@ foxes =
 			yPos: yPos, 
 			size: size,
 			originalSize: size,
+			dropPowerupType: dropPowerupType,
 			animation: {isAnimating: false, duration: foxes.caveAnimationData.animationDuration}, 
 			direction: direction,
 			maxNumberOfFoxesOut: maxNumberOfFoxesOut,
 			numOfFoxes: numOfFoxes, 
 			foxSpeed: foxSpeed, 
 			foxGap: foxGap,
+			droppedPowerup: false,
 			caveFoxesArray: foxes.getCaveFoxesArray(xPos, yPos, direction, numOfFoxes, maxNumOfLives)
 		}
 		return c
@@ -417,6 +611,7 @@ foxes =
 				isOutside: false,
 				foxDirectionSet: true,
 				lives: round(random(0.6, maxNumOfLives)),
+				startingLives: null,
 				direction: direction,
 				movingData:
 				{
@@ -425,6 +620,9 @@ foxes =
 					groundData: {onGround: false, groundIdx: null}
 				}
 			}
+
+			newFox.startingLives = newFox.lives
+
 			foxesArray.push(newFox)
 		}
 		return foxesArray
@@ -453,7 +651,7 @@ foxes =
 		{
 			currentCave = caveData[newCaveIdx]
 			
-			newCave = this.createCave(currentCave.xPos, currentCave.yPos, currentCave.size, currentCave.direction, currentCave.numOfFoxes, currentCave.foxSpeed, currentCave.foxGap, currentCave.maxNumOfLives, currentCave.maxNumberOfFoxesOut)
+			newCave = this.createCave(currentCave.xPos, currentCave.yPos, currentCave.size, currentCave.direction, currentCave.numOfFoxes, currentCave.foxSpeed, currentCave.foxGap, currentCave.maxNumOfLives, currentCave.maxNumberOfFoxesOut, currentCave.dropPowerupType)
 			this.caves.push(newCave)
 		}	
 	},
@@ -502,6 +700,32 @@ foxes =
 
 			s = currentCave.size
 
+			displayNumber = true // controls whether to display number or not (stops at 0)
+
+			if(currentCave.caveFoxesArray.length == 0)
+			{
+				displayNumber = false
+			}
+
+			if(currentCave.caveFoxesArray.length == 0 && currentCave.droppedPowerup == false)
+			{
+				if(currentCave.dropPowerupType == "size")
+				{
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "size", fromCave: true}])
+				}
+				else if(currentCave.dropPowerupType == "speed")
+				{
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "speed", fromCave: true}])
+				}
+				else if(currentCave.dropPowerupType == "flower")
+				{
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "flower", fromCave: true}])
+				}
+				currentCave.droppedPowerup = true
+			}
+
+
+			//draw cave code
 			if(currentCave.direction == "left")
 			{
 				push();
@@ -553,7 +777,19 @@ foxes =
 				rect(x + (140 * s), y + (220 * s), 90 * s, 90 * s)
 				rect(x + (210 * s), y + (180 * s), 55 * s, 55 * s)
 				rect(x + (250 * s), y + (270 * s), 40 * s, 40 * s)
+
+				//draw number of foxes left in cave
+				if(displayNumber)
+				{
+					fill(255)
+					textFont(NESfont)
+					textSize(60 * s)
+					textAlign(CENTER)
+					text(currentCave.caveFoxesArray.length, x + (10 * s), y + (200 * s))
+				}
+
 				pop();
+
 			}
 			else if (currentCave.direction == "right")
 			{
@@ -606,23 +842,31 @@ foxes =
 				rect(x - (230 * s), y + (220 * s), 90 * s, 90 * s)
 				rect(x - (265 * s), y + (180 * s), 55 * s, 55 * s)
 				rect(x - (290 * s), y + (270 * s), 40 * s, 40 * s)
+
+				//draw number of foxes left in cave
+				if(displayNumber)
+				{
+					fill(255)
+					textFont(NESfont)
+					textSize(60 * s)
+					textAlign(CENTER)
+					text(currentCave.caveFoxesArray.length, x - (10 * s), y + (200 * s))
+				}
+
 				pop();
 			}
 		}
 
 	},
 
-	getNumberOfFoxesOutside: function()
+	getNumberOfFoxesOutside: function(i)
 	{
 		foxesOutside = 0
 
-		for(i = 0; i < this.caves.length; i++)
+		for(j = this.caves[i].caveFoxesArray.length - 1; j >= 0; j--)
 		{
-			for(j = this.caves[i].caveFoxesArray.length - 1; j >= 0; j--)
-			{
-				f = this.caves[i].caveFoxesArray[j]
-				if(f.isOutside){foxesOutside += 1}
-			}
+			f = this.caves[i].caveFoxesArray[j]
+			if(f.isOutside){foxesOutside += 1}
 		}
 
 		return foxesOutside
@@ -631,7 +875,6 @@ foxes =
 	updateFoxes: function ()
 	{
 
-		console.log(this.caves)
 		for(caveIdx = 0; caveIdx < this.caves.length; caveIdx++)
 		{
 
@@ -645,7 +888,7 @@ foxes =
 					currentFox = this.caves[caveIdx].caveFoxesArray[foxIdx]
 					foxLetOut = false
 
-					numberOfFoxesOut = this.getNumberOfFoxesOutside()
+					numberOfFoxesOut = this.getNumberOfFoxesOutside(caveIdx)
 
 					if(currentFox.isOutside == false && numberOfFoxesOut < currentCave.maxNumberOfFoxesOut)
 					{
@@ -686,18 +929,42 @@ foxes =
 				//values for checking if current fox has been "jumped on"
 				if(this.checkFoxKilled(currentFox))
 				{
-					currentFox.lives -= 1;
+					pointsToAdd = 0
+					if(powerups.superSizeData.superSized)
+					{
+						pointsToAdd = ((currentFox.lives * statsBoard.pointQuantities.foxHit))
+						currentFox.lives = 0
+					}
+					else
+					{
+						pointsToAdd += statsBoard.pointQuantities.foxHit
+						currentFox.lives -= 1;
+					}
+
 					if(currentFox.lives <= 0)
 					{
+						pointsToAdd += statsBoard.pointQuantities.foxKilled
 						currentFox.movingData.platformData.onPlatform = false
 						currentFox.movingData.cloudData.onCloud = false
 						currentFox.movingData.groundData.onGround = false
 						currentFox.isDead = true;
 						currentFox.direction = "front";
-					}	
+					}
+
+					//add total points to board and animations
+					statsBoard.addPoints(pointsToAdd)
+					statsBoard.score += pointsToAdd
+
+					//make rabbit char jump
+					rabbitCharacter.earRotationData.currentlyRotating = true;
+					rabbitCharacter.jumpingData.goingUpwards = true;
+					rabbitCharacter.earRotationData.customRotationValue = rabbitCharacter.jumpingData.defaultJumpDuration * 0.5
+					rabbitCharacter.jumpingData.jumpingDuration = round(rabbitCharacter.jumpingData.defaultJumpDuration * 0.5)
+					rabbitCharacter.userInput.airCondition = "jumping"
 				}
 
-				//code to update fox movingData
+				//helper function that checks for whether player is killed by fox
+				this.checkPlayerKilledByFox(currentFox)
 
 				//make fox fall off current platform if they're out of range
 				if(currentFox.movingData.platformData.onPlatform)
@@ -751,9 +1018,9 @@ foxes =
 				if(currentFox.isFalling && currentFox.isDead == false)
 				{
 					currentFox.yPos += currentCave.foxSpeed
-					if(currentFox.yPos > height)
+					if(currentFox.yPos > resizeCanvasData.currentHeight)
 					{
-						currentCave.animation.isAnimating = true;
+						currentFox.isOutside = false;
 						currentFox.xPos = currentCave.xPos
 						currentFox.yPos = currentCave.yPos
 						currentFox.direction = currentCave.direction
@@ -784,11 +1051,90 @@ foxes =
 		}
 	},
 
+	checkPlayerKilledByFox: function(currentFox)
+	{
+
+		s = this.foxSize
+
+		jumpedOnY = currentFox.yPos - (75 * s)
+
+		if(currentFox.direction == "left")
+		{
+			jumpedOnXRight= currentFox.xPos + (65 * s)
+			jumpedOnXLeft = currentFox.xPos - (105 * s)
+		}
+		else if(currentFox.direction == "right")
+		{
+			jumpedOnXRight= currentFox.xPos + (85 * s)
+			jumpedOnXLeft = currentFox.xPos - (78 * s)
+		}
+		else if(currentFox.direction == "front")
+		{
+			jumpedOnXRight= currentFox.xPos + (40 * s)
+			jumpedOnXLeft = currentFox.xPos - (40 * s)
+		}
+
+		jumpedOnXMiddle = (jumpedOnXRight + jumpedOnXLeft) * 0.5
+
+		if(powerups.superSizeData.superSized)
+		{
+			distanceThatCountsAsDeath = 25 * 2
+		}
+		else
+		{
+			distanceThatCountsAsDeath = 25
+		}
+		
+		rabbitCenterY = rabbitCharacter.getCenterPos() - heightPos
+
+		if(currentFox.isOutside)
+		{
+			if(dist(jumpedOnXRight, jumpedOnY, rabbitCharacter.realWorldPos, rabbitCenterY) < distanceThatCountsAsDeath || 
+				dist(jumpedOnXLeft, jumpedOnY, rabbitCharacter.realWorldPos, rabbitCenterY) < distanceThatCountsAsDeath || 
+				dist(jumpedOnXMiddle, jumpedOnY, rabbitCharacter.realWorldPos, rabbitCenterY) < distanceThatCountsAsDeath)
+			{
+			if(powerups.superSizeData.superSized || powerups.superSizeData.invulnerablePeriod > 0)
+			{
+				powerups.deactivatePowerups("both")
+				powerups.superSizeData.invulnerablePeriod = powerups.superSizeData.defaultInvulnerablePeriod
+
+				//kill fox
+				currentFox.movingData.platformData.onPlatform = false
+				currentFox.movingData.cloudData.onCloud = false
+				currentFox.movingData.groundData.onGround = false
+				currentFox.isDead = true;
+				currentFox.direction = "front";
+			}
+			else
+			{
+				rabbitCharacter.isDead = true;
+			}
+			}
+		}
+	},
+
 	checkFoxKilled: function(currentFox)
 	{
-		jumpedOnY = currentFox.yPos - (95 * s)
-		jumpedOnXRight= currentFox.xPos + (85 * s)
-		jumpedOnXLeft = currentFox.xPos - (60 * s)
+
+		s = this.foxSize
+
+		jumpedOnY = currentFox.yPos - (75 * s)
+
+		if(currentFox.direction == "left")
+		{
+			jumpedOnXRight= currentFox.xPos + (65 * s)
+			jumpedOnXLeft = currentFox.xPos - (105 * s)
+		}
+		else if(currentFox.direction == "right")
+		{
+			jumpedOnXRight = currentFox.xPos + (85 * s)
+			jumpedOnXLeft = currentFox.xPos - (78 * s)
+		}
+		else if(currentFox.direction == "front")
+		{
+			jumpedOnXRight= currentFox.xPos + (40 * s)
+			jumpedOnXLeft = currentFox.xPos - (40 * s)
+		}
 
 		xCharacter = rabbitCharacter.realWorldPos
 		yCharacter = rabbitCharacter.getFeetPos() - heightPos
@@ -798,7 +1144,7 @@ foxes =
 		xInRange = (xCharacter > jumpedOnXLeft) && (xCharacter < jumpedOnXRight)
 		yInRange = abs(yCharacter - jumpedOnY) < yHeightThreshold
 
-		if(xInRange && yInRange)
+		if(xInRange && yInRange && currentFox.isOutside && rabbitCharacter.jumpingData.currentlyJumping == true && rabbitCharacter.jumpingData.goingUpwards == false)
 		{
 			return true
 		}
@@ -812,7 +1158,7 @@ foxes =
 		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
 	},
 
-	foxSize: 0.7,
+	foxSize: 0.63,
 
 	drawFoxes: function ()
 	{
@@ -841,8 +1187,6 @@ foxes =
 		for(caveIdx = 0; caveIdx < this.caves.length; caveIdx++)
 			for(foxIdx = this.caves[caveIdx].caveFoxesArray.length - 1; foxIdx >= 0; foxIdx--)
 			{
-
-				//update x and y with scrollPos and height Pos
 				x = this.caves[caveIdx].caveFoxesArray[foxIdx].xPos
 				y = this.caves[caveIdx].caveFoxesArray[foxIdx].yPos
 
@@ -853,13 +1197,22 @@ foxes =
 					this.caves[caveIdx].caveFoxesArray[foxIdx].direction = "front"
 				}
 				
+				//control changing opacity based on lives left
+				currentFox = this.caves[caveIdx].caveFoxesArray[foxIdx]
+				opacity = map(currentFox.lives, -3, currentFox.startingLives, 0, 255)
+				foxLightColor = color(this.foxColors.darkFurLight[0], this.foxColors.darkFurLight[1], this.foxColors.darkFurLight[2], opacity)
+				foxDarkColor = color(this.foxColors.darkFurDark[0], this.foxColors.darkFurDark[1], this.foxColors.darkFurDark[2], opacity)
+				foxHighlightColor = color(this.foxColors.highlights[0], this.foxColors.highlights[1], this.foxColors.highlights[2], opacity)
+				foxOutlineColor = color(this.foxColors.outlineColor[0], this.foxColors.outlineColor[1], this.foxColors.outlineColor[2], opacity)
+
+				//draw foxes code
 				if(this.caves[caveIdx].caveFoxesArray[foxIdx].direction == "right" && drawFoxBool)
 				{
 					push();
 					translate(0, -225 * s);
 
 					//tail colors
-					fill(this.foxColors.darkFurLight)
+					fill(foxLightColor)
 					beginShape()
 						vertex(x - (60 * s), y + (152 * s));
 						vertex(x - (95 * s), y + (154 * s));
@@ -868,7 +1221,7 @@ foxes =
 						vertex(x - (60 * s), y + (158 * s));
 					endShape()
 
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape()
 						vertex(x - (60 * s), y + (164 * s));
 						vertex(x - (75 * s), y + (185 * s));
@@ -877,7 +1230,7 @@ foxes =
 						vertex(x - (60 * s), y + (158 * s));
 					endShape()
 
-					fill(this.foxColors.highlights)
+					fill(foxHighlightColor)
 					beginShape()
 						vertex(x - (120 * s), y + (195 * s));
 						vertex(x - (108 * s), y + (175 * s));
@@ -897,34 +1250,34 @@ foxes =
 					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //body
 
 					//inner legs
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					rect(x - (50 * s), y + (190 * s), 15 * s, this.legData.backLegs.innerLegHeight);
 					rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
 					
 					//inner leg styling
-					fill(this.foxColors.outlineColor)
+					fill(foxOutlineColor)
 					rect(x - (50 * s), y + (180 * s) + this.legData.backLegs.innerLegHeight, 15 * s, 10 * s);
 					rect(x + (30 * s), y + (180 * s) + this.legData.frontLegs.innerLegHeight, 15 * s, 10 * s);
 
 
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					//outer legs
 					rect(x - (60 * s), y + (190 * s), 15 * s, this.legData.backLegs.outerLegHeight);
 					rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
 
 					//outer leg styling
-					fill(this.foxColors.outlineColor)
+					fill(foxOutlineColor)
 					rect(x - (60 * s), y + (175 * s) + this.legData.backLegs.outerLegHeight, 15 * s, 15 * s);
 					rect(x + (20 * s), y + (175 * s) + this.legData.frontLegs.outerLegHeight, 15 * s, 15 * s);
 
 					//body colors
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //bottom
-					fill(this.foxColors.darkFurLight)
+					fill(foxLightColor)
 					rect(x - (60 * s), y + (150 * s), 105 * s, 10 * s); //top
 
 					//body white belly
-					fill(this.foxColors.highlights);
+					fill(foxHighlightColor);
 					beginShape();
 						vertex(x - (45 * s), y + (195 * s)) // bottom left
 						vertex(x + (3 * s), y + (195 * s)) // bottom right
@@ -933,7 +1286,7 @@ foxes =
 					endShape();
 
 					//left ear
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape();
 						vertex(x + (10 * s), y + (100 * s)) // top 
 						vertex(x + (10 * s), y + (120 * s)) // bottom
@@ -948,7 +1301,7 @@ foxes =
 					endShape(CLOSE);
 
 					//face colors
-					fill(color(this.foxColors.darkFurLight))
+					fill(foxLightColor)
 					beginShape();
 						vertex(x + (10 * s), y + (120 * s)) //top left
 						vertex(x + (80 * s), y + (120 * s))	//top right
@@ -957,7 +1310,7 @@ foxes =
 						vertex(x, y + (145 * s)) //left middle
 					endShape(CLOSE);
 
-					fill(color(this.foxColors.highlights))
+					fill(foxHighlightColor)
 					beginShape();
 						vertex(x + (90 * s), y + (145 * s)) //right middle
 						vertex(x + (45 * s), y + (180 * s)) //bottom point
@@ -976,7 +1329,7 @@ foxes =
 					endShape(CLOSE);
 
 
-					stroke(color(this.foxColors.outlineColor)); //black outline color
+					stroke(foxOutlineColor); //black outline color
 					strokeWeight(4 * s); //black outline width
 					//features
 					rect(x + (32 * s), y + (140 * s), 2 * s, 5 * s); //left eye
@@ -996,7 +1349,7 @@ foxes =
 					translate(0, -225 * s);
 
 					//tail colors
-					fill(this.foxColors.darkFurLight)
+					fill(foxLightColor)
 					beginShape()
 						vertex(x + (45 * s), y + (152 * s));
 						vertex(x + (80 * s), y + (154 * s));
@@ -1005,7 +1358,7 @@ foxes =
 						vertex(x + (45 * s), y + (158 * s));
 					endShape()
 
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape()
 						vertex(x + (45 * s), y + (164 * s));
 						vertex(x + (60 * s), y + (185 * s));
@@ -1014,7 +1367,7 @@ foxes =
 						vertex(x + (45 * s), y + (158 * s));
 					endShape()
 
-					fill(this.foxColors.highlights)
+					fill(foxHighlightColor)
 					beginShape()
 						vertex(x + (105 * s), y + (195 * s));
 						vertex(x + (93 * s), y + (175 * s));
@@ -1034,36 +1387,36 @@ foxes =
 					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //body
 
 					//inner legs
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					rect(x - (50 * s), y + (190 * s), 15 * s, this.legData.backLegs.innerLegHeight);
 					rect(x + (30 * s), y + (190 * s), 15 * s, this.legData.frontLegs.innerLegHeight);
 					
 					//inner leg styling
-					fill(this.foxColors.outlineColor)
+					fill(foxOutlineColor)
 					rect(x - (50 * s), y + (180 * s) + this.legData.backLegs.innerLegHeight, 15 * s, 10 * s);
 					rect(x + (30 * s), y + (180 * s) + this.legData.frontLegs.innerLegHeight, 15 * s, 10 * s);
 
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 
 					//outer legs
 					rect(x - (60 * s), y + (190 * s), 15 * s, this.legData.backLegs.outerLegHeight);
 					rect(x + (20 * s), y + (190 * s), 15 * s, this.legData.frontLegs.outerLegHeight);
 
 					//outer leg styling
-					fill(this.foxColors.outlineColor)
+					fill(foxOutlineColor)
 					rect(x - (60 * s), y + (175 * s) + this.legData.backLegs.outerLegHeight, 15 * s, 15 * s);
 					rect(x + (20 * s), y + (175 * s) + this.legData.frontLegs.outerLegHeight, 15 * s, 15 * s);
 
 					//body colors
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //bottom
-					fill(this.foxColors.darkFurLight)
+					fill(foxLightColor)
 					rect(x - (60 * s), y + (150 * s), 105 * s, 10 * s); //top
 
 					push();
 					translate(translateBellyBy, 0)
 					//body white belly
-					fill(this.foxColors.highlights);
+					fill(foxHighlightColor);
 					beginShape();
 						vertex(x - (45 * s), y + (195 * s)) // bottom left
 						vertex(x + (3 * s), y + (195 * s)) // bottom right
@@ -1077,7 +1430,7 @@ foxes =
 					translate(translateHeadBy, 0)
 
 					//left ear
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape();
 						vertex(x + (10 * s), y + (100 * s)) // top 
 						vertex(x + (10 * s), y + (120 * s)) // bottom
@@ -1092,7 +1445,7 @@ foxes =
 					endShape(CLOSE);
 
 					//face colors
-					fill(color(this.foxColors.darkFurLight))
+					fill(foxLightColor)
 					beginShape();
 						vertex(x + (10 * s), y + (120 * s)) //top left
 						vertex(x + (80 * s), y + (120 * s))	//top right
@@ -1101,7 +1454,7 @@ foxes =
 						vertex(x, y + (145 * s)) //left middle
 					endShape(CLOSE);
 
-					fill(color(this.foxColors.highlights))
+					fill(foxHighlightColor)
 					beginShape();
 						vertex(x + (90 * s), y + (145 * s)) //right middle
 						vertex(x + (45 * s), y + (180 * s)) //bottom point
@@ -1119,7 +1472,7 @@ foxes =
 						vertex(x, y + (145 * s)) //left middle
 					endShape(CLOSE);
 
-					stroke(color(this.foxColors.outlineColor)); //black outline color
+					stroke(foxOutlineColor); //black outline color
 					strokeWeight(4 * s); //black outline width
 
 					//features
@@ -1145,7 +1498,7 @@ foxes =
 					translate(translateTailByX, translateTailByY)
 	
 					//tail colors
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape()
 						vertex(x + (45 * s), y + (152 * s));
 						vertex(x + (80 * s), y + (154 * s));
@@ -1154,7 +1507,7 @@ foxes =
 						vertex(x + (45 * s), y + (158 * s));
 					endShape()
 	
-					fill(this.foxColors.darkFurLight)
+					fill(foxLightColor)
 					beginShape()
 						vertex(x + (45 * s), y + (164 * s));
 						vertex(x + (60 * s), y + (185 * s));
@@ -1163,7 +1516,7 @@ foxes =
 						vertex(x + (45 * s), y + (158 * s));
 					endShape()
 	
-					fill(this.foxColors.highlights)
+					fill(foxHighlightColor)
 					beginShape()
 						vertex(x + (105 * s), y + (195 * s));
 						vertex(x + (95 * s), y + (175 * s));
@@ -1181,23 +1534,23 @@ foxes =
 					endShape();
 					pop();
 	
-					fill(this.foxColors.darkFurLight);
+					fill(foxLightColor);
 	
 					//main body
 					rect(x - (25 * s), y + (150 * s), 50 * s, 70 * s); //body
 	
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					//front legs
 					rect(x - (35 * s), y + (186 * s), 20 * s, 20 * s); // front left leg
 					rect(x + (15 * s), y + (186 * s), 20 * s, 20 * s); // front right leg
 	
-					fill(this.foxColors.highlights)
+					fill(foxHighlightColor)
 					rect(x - (10 * s), y + (190 * s), 20 * s, 30 * s); //body
 	
 					translate(translateHeadBy, 0)
 	
 					//left ear
-					fill(this.foxColors.darkFurDark)
+					fill(foxDarkColor)
 					beginShape();
 						vertex(x + (10 * s), y + (100 * s)) // top 
 						vertex(x + (10 * s), y + (120 * s)) // bottom
@@ -1213,7 +1566,7 @@ foxes =
 	
 					//face colors
 					noStroke();
-					fill(color(this.foxColors.darkFurLight))
+					fill(foxLightColor)
 					beginShape();
 						vertex(x + (10 * s), y + (120 * s)) //top left
 						vertex(x + (80 * s), y + (120 * s))	//top right
@@ -1222,7 +1575,7 @@ foxes =
 						vertex(x, y + (145 * s)) //left middle
 					endShape(CLOSE);
 	
-					fill(color(this.foxColors.highlights))
+					fill(foxHighlightColor)
 					beginShape();
 						vertex(x + (90 * s), y + (145 * s)) //right middle
 						vertex(x + (45 * s), y + (180 * s)) //bottom point
@@ -1240,7 +1593,7 @@ foxes =
 						vertex(x, y + (145 * s)) //left middle
 					endShape(CLOSE);
 	
-					stroke(color(this.foxColors.outlineColor)); //black outline color
+					stroke(foxOutlineColor); //black outline color
 					strokeWeight(4 * s); //black outline width
 					//features
 					rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
@@ -1353,11 +1706,10 @@ animatePointsCollected =
 //--------------------RESIZE CANVAS FUNCTIONS (CONTROLS CANVAS RESIZING)--------------------//
 updateCanvasData = function ()
 {
-	levels[currentLevel].scrollPosLeft = resizeCanvasData.currentWidth * 0.2
+	levels[currentLevel].scrollPosLeft = (resizeCanvasData.currentWidth * 0.2)
 	levels[currentLevel].scrollPosRight = resizeCanvasData.currentWidth * 0.8
-	levels[currentLevel].heightPosTop = resizeCanvasData.currentHeight * 0.2
+	levels[currentLevel].heightPosTop = (resizeCanvasData.currentHeight * 0.2)
 	levels[currentLevel].heightPosBottom = resizeCanvasData.currentHeight * 0.65
-	levels[currentLevel].characterYStart = floorPos_y - 111
 }
 
 updateYObjStart = function ()
@@ -1394,7 +1746,20 @@ updateYObjStart = function ()
 	{
 		levels[currentLevel].cavesData[i].yPos += resizeCanvasData.yObjStart
 	}
-	//update rabbit ypos
+	for(i = 0; i < levels[currentLevel].powerupPositionsArray.length; i++)
+	{
+		levels[currentLevel].powerupPositionsArray[i].yPos += resizeCanvasData.yObjStart
+	}
+	for(i = 0; i < levels[currentLevel].messagesData.length; i++)
+	{
+		levels[currentLevel].messagesData[i].circleY += resizeCanvasData.yObjStart
+		for(j = 0; j < levels[currentLevel].messagesData[i].messages.length; j++)
+		{
+			currentMessage = levels[currentLevel].messagesData[i].messages[j]
+			currentMessage.yPos += resizeCanvasData.yObjStart
+		}
+	}
+
 	levels[currentLevel].characterYStart += resizeCanvasData.yObjStart
 }
 
@@ -1403,98 +1768,12 @@ levels =
 [
 	//level 0
 	{
+		//level data
+		levelText: "Tutorial: Rescue your daughter Ophelia",
 		//vital char data 
 		characterYStartHeightPos: 0,
 		characterXStartScrollPos: 0,
-		characterYStart: 322,
-		characterXStart: 520,
-		characterSize: 0.5,
-		heightPosTop: null,
-		heightPosBottom: null,
-		scrollPosLeft: null,
-		scrollPosRight: null,
-		skyColor: [137,207,240],
-		bulletInRangeValue: 20,
-		//fox data
-		cavesData: [{xPos: 1100, yPos: 94, size: 0.5, direction: "left", numOfFoxes: 200, foxSpeed: 5, foxGap: 10, maxNumOfLives: 4, maxNumberOfFoxesOut: 50}],
-		//carrot data
-		carrotColor: [246, 118, 34],
-		carrotStemColor: [35, 92, 70],
-		carrotPositionsArray: 
-			[{xPos: 1225, yPos: 375, size: 0.2},
-			{xPos: 1400, yPos: 15, size: 0.2},
-			{xPos: 1600, yPos: -185, size: 0.2}],
-		//lives data
-		livesColor: [255, 0, 0],
-		heartPositionsArray: 
-			[{xPos: 2060, yPos: 375, size: 0.3}],
-		//ground data
-		grassLight: [234,242,5],
-		grassDark: [210,217,4],
-		dirtLight: [77,50,32],
-		dirtDark: [191,184,90],
-		bedRockLight: [115,56,36],
-		bedRockDark: [67,53,32],
-		groundPositionsArray:
-			[[400, 640], [790, 1275], [2025, 2800]],
-		//canyon data
-		canyonPositionsArray:
-			[{xPos: 640, canyonWidth: 150}, {xPos: 1275, canyonWidth: 750}],
-		canyonColor: [137,207,240],
-		//platform data
-		platformPositionsArray:
-			[{yPos: 200, platformStart: 2800, platformEnd: 3300},
-			{yPos: 94, platformStart: 800, platformEnd: 1400}],
-		platformGrassLight: [19,232,83],
-		platformGrassDark: [12,86,25],
-		platformDirtLight: [77,50,32],
-		platformDirtDark: [55,34,25],
-		platformBedRockLight: [35,21,14],
-		platformBedRockDark: [13,9,6],
-		//cloud data
-		cloudPositionsArray: 
-			[{xPos: 1200, yPos: 200, direction: "right", speed: [4, 4], maxLeft: 0, maxRight: 600},
-			{xPos: 1300, yPos: 0, direction: "right", speed: [3, 3], maxLeft: 0, maxRight: 500},
-			{xPos: 1500, yPos: -200, direction: "right", speed: [2, 2], maxLeft: 0, maxRight: 100},
-			{xPos: 680, yPos: 250, direction: "right", speed: [1, 2], maxLeft: 0, maxRight: 10}],
-		//mountain data
-		sideMountainsColor: [126,116,116],
-		middleMountainColor: [196,182,182],
-		riverColor: [31,111,139],
-		snowCapColor: [255,255,255],
-		mountainPositionsArray:
-			[{xPos: 2500, yPos: 432, scale: 2.7}],
-		//tree data
-		leavesColor: [0, 155, 0],
-		trunkColor: [120, 100, 40],
-		treePositionsArray:
-			[{xPos: 480, yPos: 432, scale: 1.45}],
-		//enemies data
-		hatTopColor: [153, 76, 0],
-		hatBottomColor: [102, 51, 0],
-		gunTopColor: [128],
-		gunBottomColor: [96],
-		innerFootColor: [139,69,19],
-		outerFootColor: [160,82,45],
-		bodyColor: [0, 77, 0],
-		faceColor: [191, 153, 115],
-		bulletColor: [69],
-		enemyPositionsArray:
-			[{xPos: 1030, yPos: 392, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300, maxBulletDistIsX: false}],
-		//child data
-		childXPos: 3265,
-		childYPos: 169,
-		childSize: 0.3,
-		childPlatformColor: [255],
-		//yIdx updated (should only happen once)
-		yIdxUpdated: false
-	},
-	//level 1
-	{
-		//vital char data 
-		characterYStartHeightPos: 0,
-		characterXStartScrollPos: 0,
-		characterYStart: 485,
+		characterYStart: 432,
 		characterXStart: 520,
 		characterSize: 0.5,
 		heightPosTop: null,
@@ -1503,21 +1782,27 @@ levels =
 		scrollPosRight: null,
 		skyColor: [208,227,204],
 		bulletInRangeValue: 25,
+		//message data
+		messagesData: [{circleX: 660, circleY: 390, circleRadius: 40, scale: 1, messages: [{xPos: 0, yPos: 120, text: "Help Alfred", textColor: [0,0,0]}, 
+																					{xPos: 0, yPos: 220, text: "find his family!", textColor: [0,0,0]}, 
+																					{xPos: 0, yPos: 400, text: "Collect all items", textColor: [0,0,0]},
+																					{xPos: 0, yPos: 500, text: "in the pink bar", textColor: [252, 180, 191]},
+																					{xPos: 0, yPos: 600, text: "and don't die", textColor: [0, 0, 0]},
+																					{xPos: 0, yPos: 700, text: "to score 100%", textColor: [0, 0, 0]} 
+																					]}],
+		//fox data
+		cavesData: [{xPos: 1800, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 3, foxGap: 200, maxNumOfLives: 10, maxNumberOfFoxesOut: 2, dropPowerupType: "speed"}],
+		//powerup data
+		powerupPositionsArray: [{xPos: 320, yPos: 380, size: 0.25, type: "flower", fromCave: false}, {xPos: 290, yPos: 380, size: 0.2, type: "size", fromCave: false}, {xPos: 250, yPos: 380, size: 0.2, type: "speed", fromCave: false}, {xPos: 2900, yPos: 380, size: 0.2, type: "flower", fromCave: false}],
 		//carrot data
 		carrotColor: [246, 118, 34],
 		carrotStemColor: [35, 92, 70],
 		carrotPositionsArray: 
-			[{xPos: 1300, yPos: 375, size: 0.2},
-			{xPos: 1500, yPos: 39, size: 0.2},
-			{xPos: 3375, yPos: -202, size: 0.2},
-			{xPos: 3875, yPos: -202, size: 0.2},
-			{xPos: 4050, yPos: 375, size: 0.2}],
-		//heart data
+			[{xPos: 780, yPos: 384, size: 0.2}],
+		//lives data
 		livesColor: [255, 0, 0],
 		heartPositionsArray: 
-			[{xPos: 1600, yPos: -207, size: 0.3},
-			{xPos: 4065, yPos: 210, size: 0.3},
-			{xPos: 4800, yPos: 375, size: 0.3}],
+			[{xPos: 3280, yPos: 200, size: 0.3}],
 		//ground data
 		grassLight: [243,180,139],
 		grassDark: [223,145,94],
@@ -1526,21 +1811,15 @@ levels =
 		bedRockLight: [84,60,44],
 		bedRockDark: [67,53,32],
 		groundPositionsArray:
-			[[400, 640], [1040, 1350], [4375, 4875], [5100, 5600]],
+			[[200, 900], [1100, 2000], [2600, 3800], [3950, 4300]],
 		//canyon data
 		canyonPositionsArray:
-		[{xPos: 640, canyonWidth: 400}],
+			[],
 		canyonColor: [208,227,204],
 		//platform data
 		platformPositionsArray:
-			[{yPos: 280, platformStart: 1400, platformEnd: 1950},
-			{yPos: -150, platformStart: 1400, platformEnd: 1650},
-			{yPos: -150, platformStart: 1700, platformEnd: 1950},
-			{yPos: -150, platformStart: 2730, platformEnd: 3000},
-			{yPos: -150, platformStart: 3250, platformEnd: 3500},
-			{yPos: -150, platformStart: 3750, platformEnd: 4000},
-			{yPos: -150, platformStart: 4250, platformEnd: 4500},
-			{yPos: 432, platformStart: 4000, platformEnd: 4250}],
+			[{yPos: 250, platformStart: 1950, platformEnd: 2600},
+			{yPos: 250, platformStart: 3175, platformEnd: 3400}],
 		platformGrassLight: [246,241,182],
 		platformGrassDark: [238,231,153],
 		platformDirtLight: [227,217,106],
@@ -1549,26 +1828,22 @@ levels =
 		platformBedRockDark: [161,126,7],
 		//cloud data
 		cloudPositionsArray: 
-			[{xPos: 600, yPos: 310, direction: "right", speed: [5, 5], maxLeft: 0, maxRight: 290},
-			{xPos: 1360, yPos: 30, direction: "right", speed: [4, 5], maxLeft: 0, maxRight: 450},
-			{xPos: 1560, yPos: 30, direction: "right", speed: [3, 4], maxLeft: 200, maxRight: 250},
-			{xPos: 1950, yPos: -224, direction: "right", speed: [3, 4], maxLeft: 0, maxRight: 600},
-			{xPos: 3815, yPos: 30, direction: "right", speed: [3, 4], maxLeft: 0, maxRight: 450},
-			{xPos: 4015, yPos: 200, direction: "right", speed: [4, 5], maxLeft: 200, maxRight: 250}],
+			[{xPos: 2600, yPos: 200, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 400}],
 		//mountain data
 		sideMountainsColor: [188,148,90],
 		middleMountainColor: [238,206,160],
 		riverColor: [238,206,160],
 		snowCapColor: [238,206,160],
 		mountainPositionsArray:
-			[{xPos: 3200, yPos: 680, scale: 5}],
+			[{xPos: 1300, yPos: 432, scale: 1.9},
+			{xPos: 3600, yPos: 432, scale: 1.2}],
 		//tree data
 		leavesColor: [244, 225, 172],
 		trunkColor: [120, 100, 40],
 		treePositionsArray:
-			[{xPos: 1475, yPos: -150, scale: 2},
-			{xPos: 2860, yPos: -150, scale: 1.2},
-			{xPos: 5500, yPos: 432, scale: 1.2}],
+			[{xPos: 460, yPos: 432, scale: 1.2},
+			{xPos: 2100, yPos: 250, scale: 1.45},
+			{xPos: 4050, yPos: 432, scale: 1.45}],
 		//enemies data
 		hatTopColor: [216, 120, 70],
 		hatBottomColor: [159, 77, 40],
@@ -1580,14 +1855,9 @@ levels =
 		faceColor: [191, 153, 115],
 		bulletColor: [69],
 		enemyPositionsArray:
-			[{xPos: 1200, yPos: 392, scale: 1, firingFrequency: 40, firingSpeed: 10, maxBulletDistLeft: 560, maxBulletDistRight: 200, maxBulletDistIsX: false},
-			{xPos: 1440, yPos: 54, scale: 1, firingFrequency: 120, firingSpeed: 10, maxBulletDistLeft: 1400, maxBulletDistRight: 1950, maxBulletDistIsX: true},
-			{xPos: 2050, yPos: -200, scale: 1, firingFrequency: 40, firingSpeed: 15, maxBulletDistLeft: 1950, maxBulletDistRight: 2700, maxBulletDistIsX: true},
-			{xPos: 4375, yPos: -190, scale: 1, firingFrequency: 40, firingSpeed: 20, maxBulletDistLeft: 350, maxBulletDistRight: 250, maxBulletDistIsX: false},
-			{xPos: 4170, yPos: 392, scale: 1, firingFrequency: 40, firingSpeed: 20, maxBulletDistLeft: 350, maxBulletDistRight: 250, maxBulletDistIsX: false},
-			{xPos: 4130, yPos: 224, scale: 1, firingFrequency: 40, firingSpeed: 20, maxBulletDistLeft: 350, maxBulletDistRight: 250, maxBulletDistIsX: false}],
+			[{xPos: 2450, yPos: 210, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300, maxBulletDistIsX: false}],
 		//child data
-		childXPos: 5400,
+		childXPos: 4200,
 		childYPos: 565,
 		childSize: 0.3,
 		childPlatformColor: [255],
@@ -1595,6 +1865,586 @@ levels =
 		yIdxUpdated: false
 	}
 ]
+
+//--------------------POWERUPS OBJECT (STORES SUPER SPEED / SUPER SIZE / FLOWERS)--------------------//
+powerups = 
+{
+	updatePowerups: function ()
+	{
+		if(this.superSizeData.superSized)
+		{
+			this.enlargeForSuperSize()
+			this.superSizeData.duration -= 1
+
+			if(this.superSizeData.duration == 0)
+			{
+				this.deactivatePowerups("size")
+			}
+		}
+		else
+		{
+			this.scaleDownRabbitAndDecrementInvulnerability()
+		}
+
+		if(this.superSpeedData.isActive)
+		{
+			this.superSpeedVectorsData.xPos = rabbitCharacter.xPos
+			this.superSpeedVectorsData.yPos = rabbitCharacter.getCenterPos()
+			this.superSpeedVectorsData.size = rabbitCharacter.size
+			this.drawSuperSpeedVectors()
+
+			this.superSpeedData.duration -= 1
+			if(this.superSpeedData.duration == 0)
+			{
+				this.deactivatePowerups("speed")
+			}
+		}
+
+	},
+
+	deactivatePowerups: function(powerupsToDeactivate)
+	{
+		if(powerupsToDeactivate == "size")
+		{
+			this.superSizeData.invulnerablePeriod = 0;
+			this.superSizeData.superSized = false
+		}
+		else if(powerupsToDeactivate == "speed")
+		{
+			this.superSpeedData.isActive = false
+			rabbitCharacter.jumpingData.defaultJumpDuration = rabbitCharacter.jumpingData.resetJumpDuration
+			if(rabbitCharacter.jumpingData.currentlyJumping == false)
+			{
+				rabbitCharacter.jumpingData.jumpingDuration = rabbitCharacter.jumpingData.resetJumpDuration
+			}
+			rabbitCharacter.rabbitSpeedData.defaultSpeed = rabbitCharacter.rabbitSpeedData.resetSpeed
+		}
+		else if(powerupsToDeactivate == "both")
+		{
+			//size (copied from above)
+			this.superSizeData.invulnerablePeriod = 0;
+			this.superSizeData.superSized = false
+
+			//speed (copied from above)
+			this.superSpeedData.isActive = false
+			if(rabbitCharacter.jumpingData.currentlyJumping == false)
+			{
+				rabbitCharacter.jumpingData.jumpingDuration = rabbitCharacter.jumpingData.resetJumpDuration
+			}
+			rabbitCharacter.jumpingData.defaultJumpDuration = rabbitCharacter.jumpingData.resetJumpDuration
+			rabbitCharacter.rabbitSpeedData.defaultSpeed = rabbitCharacter.rabbitSpeedData.resetSpeed
+		}
+	},
+
+	currentRainbowColors: [0, 0, 0],
+
+	getRainbowOutline: function()
+	{
+		variableAmount = 25
+		currentIteration = []
+
+		for(colorIdx = 0; colorIdx < this.currentRainbowColors.length; colorIdx++)
+		{
+			currentColor = this.currentRainbowColors[colorIdx]
+
+			if(currentColor < 0)
+			{
+				this.currentRainbowColors[colorIdx] += variableAmount
+			}
+			else if(currentColor > 255)
+			{
+				this.currentRainbowColors[colorIdx] -= variableAmount
+			}
+			else
+			{
+				this.currentRainbowColors[colorIdx] += random(-variableAmount, variableAmount)
+			}
+
+			currentIteration.push(constrain(round(currentColor), 0, 255))
+		}
+		return currentIteration
+	},
+
+	superSizeData:
+	{
+		superSize: 1,
+		superSizeRate: 1.1,
+		superSized: false,
+		defaultInvulnerablePeriod: 200,
+		invulnerablePeriod: 0,
+		powerupStemColor: [109, 78, 158],
+		powerupCarrotColor: 240,
+		defaultDuration: 2000,
+		duration: 0
+	},
+
+	enlargeForSuperSize: function()
+	{
+		if(rabbitCharacter.size < this.superSizeData.superSize)
+		{
+			rabbitCharacter.size *= this.superSizeData.superSizeRate
+		}
+	},
+
+	scaleDownRabbitAndDecrementInvulnerability: function()
+	{
+		
+		if(rabbitCharacter.size > levels[currentLevel].characterSize)
+		{
+			rabbitCharacter.size *= 2 - this.superSizeData.superSizeRate
+		}
+		else
+		{
+			rabbitCharacter.size = levels[currentLevel].characterSize
+		}
+
+		if(this.superSizeData.invulnerablePeriod > 0)
+		{
+			this.superSizeData.invulnerablePeriod -= 1
+		}
+	},
+
+	superSpeedData:
+	{
+		isActive: false,
+		defaultDuration: 1000,
+		duration: 0
+	},
+
+	superSpeedVectorsData:
+	{
+		rotateSpeedInner: -0.08,
+		rotateSpeedOuter: 0.1,
+		rotationInner: 3,
+		rotationOuter: 0,
+		size: 2,
+		xPos: 300,
+		yPos: 200,
+		yellowColor: [255, 238, 117],
+	},
+
+	drawSuperSpeedVectors: function ()
+	{
+		angleMode(RADIANS)
+
+		vectorData = this.superSpeedVectorsData
+		x = vectorData.xPos
+		y = vectorData.yPos
+		s = vectorData.size
+
+		let centerVector = createVector(x, y);
+		let innerVector = createVector(70 * s, 70 * s)
+		let outerVector = createVector(80 * s, 80 * s)
+		
+		fill(color(this.superSpeedVectorsData.yellowColor))
+		noStroke();
+		
+		push()
+		translate(centerVector.x, centerVector.y)
+		innerVector.rotate(vectorData.rotationInner)
+		outerVector.rotate(vectorData.rotationOuter)
+
+		innerOuterSize = 20
+
+		ellipse(innerVector.x, innerVector.y, 20 * s, 20 * s)
+		ellipse(outerVector.x, outerVector.y, 20 * s, 20 * s)
+		pop();
+
+		//two if statements below reset rotate value once one rotation has been reached, otherwise updates them
+		if(vectorData.rotationInner <  -(2 * PI))
+		{
+			vectorData.rotationInner = 0
+		}
+		else
+		{
+			vectorData.rotationInner += vectorData.rotateSpeedInner
+		}
+
+		if(vectorData.rotationOuter > 2 * PI)
+		{
+			vectorData.rotationOuter = 0
+		}
+		else
+		{
+			vectorData.rotationOuter += vectorData.rotateSpeedOuter
+		}
+
+	},
+
+	drawSuperSpeedPowerup: function (x, y, s)
+	{	
+		push();
+		translate(-45 * s, -12 * s)
+		noStroke();
+
+		fill(0)
+		beginShape();
+			//black outline
+			vertex(x, y)
+			vertex(x, y - (20 * s))
+			vertex(x + (10 * s), y - (20 * s))
+			vertex(x + (10 * s), y - (40 * s))
+			vertex(x + (20 * s), y - (40 * s))
+			vertex(x + (20 * s), y - (65 * s))
+			vertex(x + (100 * s), y - (65 * s))
+			vertex(x + (100 * s), y - (31 * s))
+			vertex(x + (90 * s), y - (31 * s))
+			vertex(x + (90 * s), y - (16 * s))
+			vertex(x + (105 * s), y - (16 * s))
+			vertex(x + (105 * s), y + (24 * s))
+			vertex(x + (90 * s), y + (24 * s))
+			vertex(x + (90 * s), y + (44 * s))
+			vertex(x + (70 * s), y + (44 * s))
+			vertex(x + (70 * s), y + (64 * s))
+			vertex(x + (55 * s), y + (64 * s))
+			vertex(x + (55 * s), y + (84 * s))
+			vertex(x + (40 * s), y + (84 * s))
+			vertex(x + (40 * s), y + (100 * s))
+			vertex(x + (25 * s), y + (100 * s))
+			vertex(x + (25 * s), y + (115 * s))
+			vertex(x - (10 * s), y + (115 * s))
+			vertex(x - (10 * s), y + (80 * s))
+			vertex(x, y + (80 * s))
+			vertex(x, y + (60 * s))
+			vertex(x + (10 * s), y + (60 * s))
+			vertex(x + (10 * s), y + (40 * s))
+			vertex(x - (14 * s), y + (40 * s))
+			vertex(x - (14 * s), y)
+		endShape()
+
+		//bolt
+		fill(this.superSpeedVectorsData.yellowColor)
+		rect(x + (30 * s), y - (55 * s), 60 * s, 24 * s)
+		rect(x + (20 * s), y - (40 * s), 55 * s, 24 * s)
+		rect(x + (10 * s), y - (20 * s), 50 * s, 24 * s)
+		rect(x, y, 90 * s, 24 * s)
+		rect(x + (30 * s), y + (20 * s), 40 * s, 24 * s)
+		rect(x + (20 * s), y + (40 * s), 35 * s, 24 * s)
+		rect(x + (10 * s), y + (60 * s), 30 * s, 24 * s)
+		rect(x, y + (80 * s), 25 * s, 20 * s)
+		pop();
+	},
+
+	drawSuperSizePowerup: function (x, y, s)
+	{
+		noStroke();
+		fill(color(this.superSizeData.powerupStemColor));
+
+		//main carrot
+		push();
+		translate(-(60 * s), 0)
+		rect(x + (20 * s), y - (40 * s), 80 * s, 80 * s)
+		rect(x, y, 60 * s, 60 * s)
+		rect(x - (20 * s), y + (40 * s), 40 * s, 40 * s)
+		
+		//carrot stems
+		push();
+		translate(x + (80 * s), y - (30 * s), 20 * s, 20 * s);
+		fill(this.superSizeData.powerupCarrotColor);
+		angleMode(DEGREES);
+		rect(0, 0, 60 * s, 25 * s);
+		rotate(-45);
+		rect(0, -4 * s, 60 * s, 25 * s);
+		rotate(-45);
+		rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
+		pop();
+		pop();
+	},
+
+	flowerData:
+	{
+		stemColorDark: [37, 57, 2],
+		stemColorMedium: [65, 101, 5],
+		stemColorLight: [86, 132, 7],
+		petalColorLight: [255, 102, 102],
+		petalColorMedium: [238, 34, 34],
+		petalColorDark: [99, 14, 14]
+	},
+
+	drawFlowerPowerup: function(x, y, s)
+	{
+		noStroke();
+
+		push();
+		translate(-15 * s, 20 * s)
+		//stem
+		fill(this.flowerData.stemColorMedium)
+		rect(x + (10 * s), y - (40 * s), 10 * s, 85 * s)
+		fill(this.flowerData.stemColorDark)
+		rect(x + (10 * s), y - (50 * s), 10 * s, 10 * s)
+		fill(this.flowerData.stemColorLight)
+		rect(x + (20 * s), y - (50 * s), 10 * s, 10 * s)
+
+		//petals
+		fill(this.flowerData.petalColorLight)
+		rect(x + (30 * s), y - (50 * s), 10 * s, 10 * s)
+		rect(x, y - (60 * s), 50 * s, 10 * s)
+		rect(x, y - (90 * s), 20 * s, 10 * s)
+		fill(this.flowerData.petalColorMedium)
+		rect(x - (10 * s), y - (70 * s), 60 * s, 10 * s)
+		rect(x - (10 * s), y - (80 * s), 50 * s, 10 * s)
+		fill(this.flowerData.petalColorDark)
+		rect(x + (10 * s), y - (70 * s), 20 * s, 10 * s)
+		rect(x + (20 * s), y - (80 * s), 10 * s, 10 * s)
+
+		//leaves
+		fill(this.flowerData.stemColorDark)
+		rect(x, y, 30 * s, 10 * s)
+		fill(this.flowerData.stemColorMedium)
+		rect(x - (10 * s), y - (10 * s), 50 * s, 10 * s)
+		rect(x + (30 * s), y - (20 * s), 20 * s, 10 * s)
+		fill(this.flowerData.stemColorLight)
+		rect(x - (20 * s), y - (20 * s), 20 * s, 10 * s)
+		pop();
+	},
+
+	powerupsArray: [],
+
+	createPowerup: function (x, y, s, type, fromCave)
+	{
+		p = 
+		{
+			x: x,
+			y: y,
+			type: type,
+			currentYPos: y,
+			size: s,
+			originalSize: s,
+			fromCave: fromCave,
+			downAnimation: true,
+			beenCollected: false,
+			powerupFloorPosY: y + (s * 122),
+			inProximity: function (charX, charY)
+			{
+				powerupX = this.x
+				powerupY = this.currentYPos + (10 * this.size)
+
+				if(powerups.superSizeData.superSized)
+				{
+					powerupRadius = (this.size * 90) * 2
+				}
+				else
+				{
+					powerupRadius = this.size * 90
+				}
+
+				return dist(powerupX, powerupY, charX, charY) < powerupRadius
+
+			}
+		}
+		return p
+	},
+
+	addPowerups: function (powerupsInput)
+	{
+		for(i = 0; i < powerupsInput.length; i++)
+		{
+			this.powerupsArray.push(this.createPowerup(powerupsInput[i].xPos, powerupsInput[i].yPos + 20, powerupsInput[i].size, powerupsInput[i].type, powerupsInput[i].fromCave))
+		}
+	},
+
+	drawPowerups: function()
+	{
+		for(i = this.powerupsArray.length - 1; i >= 0; i--)
+		{
+			//check if player is close to this powerup
+
+			if(this.powerupsArray[i].inProximity(rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos))
+			{
+				if(!this.powerupsArray[i].beenCollected)
+				{
+					if(this.powerupsArray[i].type == "speed")
+					{
+						changeFloorPosYBy = 1.012
+						collectedAnimations.addAnimation(this.powerupsArray[i].x, this.powerupsArray[i].powerupFloorPosY * changeFloorPosYBy, color(248, 228, 157), color(245, 219, 106), this.powerupsArray[i])
+						statsBoard.addPoints(statsBoard.pointQuantities.speed)
+					}
+					else if(this.powerupsArray[i].type == "size")
+					{
+						changeFloorPosYBy = 1.014
+						collectedAnimations.addAnimation(this.powerupsArray[i].x, this.powerupsArray[i].powerupFloorPosY * changeFloorPosYBy, color(205, 219, 140), color(176, 201, 71), this.powerupsArray[i])
+						statsBoard.addPoints(statsBoard.pointQuantities.size)
+					}
+					else if(this.powerupsArray[i].type == "flower")
+					{
+						changeFloorPosYBy = 1.0025
+						collectedAnimations.addAnimation(this.powerupsArray[i].x, this.powerupsArray[i].powerupFloorPosY * changeFloorPosYBy, color(250), color(230), this.powerupsArray[i])
+						statsBoard.addPoints(statsBoard.pointQuantities.flower)
+					}
+				}
+				
+				this.powerupsArray[i].beenCollected = true;
+			}
+
+			// animate powerups if they haven't been collected
+			if(this.powerupsArray[i].downAnimation && !this.powerupsArray[i].beenCollected)
+			{
+				
+				if(this.powerupsArray[i].currentYPos - this.powerupsArray[i].y == 5)
+				{
+					this.powerupsArray[i].downAnimation = false;
+				}
+				if(frameCount % 3 == 0)
+				{
+					this.powerupsArray[i].currentYPos++;
+				}
+			}
+			else if (!this.powerupsArray[i].downAnimation && !this.powerupsArray[i].beenCollected)
+			{
+				if(this.powerupsArray[i].y - this.powerupsArray[i].currentYPos == 5)
+				{
+					this.powerupsArray[i].downAnimation = true;
+				}
+				if(frameCount % 3 == 0)
+				{
+					this.powerupsArray[i].currentYPos--;
+				}
+			} 
+
+			//animate the powerups once they are collected
+			if(this.powerupsArray[i].beenCollected)
+			{
+				if(this.powerupsArray[i].originalSize * 2 > this.powerupsArray[i].size)
+				{
+					this.powerupsArray[i].size *= 1.012;
+				}
+				else
+				{
+					p = this.powerupsArray[i]
+					duration = 10 // controls duration in # of frames of powerups going to game char
+
+					xUpdate = abs(p.x - (rabbitCharacter.realWorldPos)) / duration
+					yUpdate = abs((p.y + heightPos) - rabbitCharacter.getCenterPos()) / duration
+					sizeUpdate = (0.05 - h.size) / duration
+
+					this.powerupsToCharArray.push({xPos: p.x, 
+													yPos: p.y, 
+													size: p.size, 
+													lifeSpan: duration,
+													xUpdate: xUpdate, 
+													yUpdate: yUpdate, 
+													sizeUpdate: sizeUpdate,
+													type: p.type,
+													fromCave: this.powerupsArray[i].fromCave})
+
+					this.powerupsArray.splice(i, 1);
+
+					continue;
+				}
+			}
+
+			//draw the powerups to the canvas
+			x = this.powerupsArray[i].x
+			y = this.powerupsArray[i].currentYPos
+			s = this.powerupsArray[i].size
+
+			if(this.powerupsArray[i].type == "speed")
+			{
+				this.drawSuperSpeedPowerup(x, y, s)
+			}
+			else if(this.powerupsArray[i].type == "size")
+			{
+				this.drawSuperSizePowerup(x, y, s)
+			}
+			else if(this.powerupsArray[i].type == "flower")
+			{
+				this.drawFlowerPowerup(x, y, s)
+			}
+		}
+	},
+
+	powerupsToCharArray: [],
+
+	drawPowerupsToChar: function()
+	{
+		for(i = 0; i < this.powerupsToCharArray.length; i++)
+		{
+			currentPower = this.powerupsToCharArray[i]
+
+			if(currentPower.xPos > rabbitCharacter.realWorldPos)
+			{
+				currentPower.xPos -= currentPower.xUpdate
+			}
+			else
+			{
+				currentPower.xPos += currentPower.xUpdate
+			}
+
+			if(currentPower.yPos > rabbitCharacter.getCenterPos())
+			{
+				currentPower.yPos -= currentPower.yUpdate
+			}
+			else
+			{
+				currentPower.yPos += currentPower.yUpdate
+			}
+			
+			currentPower.size += currentPower.sizeUpdate
+
+			if(currentPower.type == "size")
+			{
+				this.drawSuperSizePowerup(currentPower.xPos, currentPower.yPos, currentPower.size)
+			}
+			else if(currentPower.type == "speed")
+			{
+				this.drawSuperSpeedPowerup(currentPower.xPos, currentPower.yPos, currentPower.size)
+			}
+			else if(currentPower.type == "flower")
+			{
+				this.drawFlowerPowerup(currentPower.xPos, currentPower.yPos, currentPower.size)
+			}
+
+			currentPower.lifeSpan -= 1
+			if(currentPower.lifeSpan <= 0)
+			{
+
+				//update caves
+				if(currentPower.fromCave)
+				{
+					statsBoard.itemCollected("cave")
+				}
+
+				//activate powerups
+				if(currentPower.type == "size" && rabbitCharacter.isDead == false)
+				{
+					powerups.superSizeData.superSized = true
+					powerups.superSizeData.duration += powerups.superSizeData.defaultDuration
+
+				}
+				else if(currentPower.type == "speed" && rabbitCharacter.isDead == false)
+				{
+
+					powerups.superSpeedData.isActive = true
+					powerups.superSpeedData.duration += powerups.superSpeedData.defaultDuration
+					rabbitCharacter.jumpingData.defaultJumpDuration = 65
+					if(rabbitCharacter.jumpingData.currentlyJumping == false)
+					{
+						rabbitCharacter.jumpingData.jumpingDuration = 65
+					}
+					rabbitCharacter.rabbitSpeedData.defaultSpeed = 6
+				}
+
+				//add points
+				if(currentPower.type == "size")
+				{
+					statsBoard.score += statsBoard.pointQuantities.size
+				}
+				else if(currentPower.type == "speed")
+				{
+					statsBoard.score += statsBoard.pointQuantities.speed
+				}
+				else if(currentPower.type == "flower")
+				{
+					statsBoard.score += statsBoard.pointQuantities.flower
+				}
+
+				//remove points
+				this.powerupsToCharArray.splice(i, 1)
+			}
+		}
+	}
+
+}
 
 //--------------------CHILD OBJECT--------------------//
 child = 
@@ -1707,8 +2557,17 @@ child =
 	{
 		charX = rabbitCharacter.realWorldPos
 		charY = rabbitCharacter.getCenterPos() - heightPos
-		childRadius = this.size * 180
-		childIsFound =  dist(this.xPos, this.yPos, charX, charY) < 50 / 2
+
+		if(powerups.superSizeData.superSized)
+		{
+			childIsFoundRadius = 25 * 2
+		}
+		else
+		{
+			childIsFoundRadius = 25
+		}
+
+		childIsFound =  dist(this.xPos, this.yPos, charX, charY) < childIsFoundRadius
 
 		if(childIsFound && this.isFound == false)
 		{
@@ -1740,8 +2599,17 @@ lives =
 			{
 				heartX = this.x
 				heartY = this.currentYPos + (10 * this.size)
-				heartRadius = this.size * 180
-				return dist(heartX, heartY, charX, charY) < heartRadius / 2
+
+				if(powerups.superSizeData.superSized)
+				{
+					heartRadius = (this.size * 90) * 2
+				}
+				else
+				{
+					heartRadius = this.size * 90
+				}
+
+				return dist(heartX, heartY, charX, charY) < heartRadius
 
 			}
 		}
@@ -1770,7 +2638,7 @@ lives =
 				{
 					playSound("lifeCollected")
 					statsBoard.addPoints(statsBoard.pointQuantities.life)
-					collectedAnimations.addAnimation(this.heartsArray[i].x, this.heartsArray[i].heartFloorPosY, color(196, 58, 30), color(150, 24, 0), this.heartsArray[i])
+					collectedAnimations.addAnimation(this.heartsArray[i].x, this.heartsArray[i].heartFloorPosY, color(247, 214, 214), color(247, 174, 175), this.heartsArray[i])
 
 				}
 				
@@ -1851,6 +2719,13 @@ lives =
 //--------------------STATS BOARD OBJECT--------------------//
 statsBoard = 
 {
+	boardScale:
+	{
+		x: null,
+		y: null,
+		scale: null
+	},
+
 	score: 0,
 
 	totalScore: null,
@@ -1864,6 +2739,7 @@ statsBoard =
 		livesTotal = 0;
 		childrenTotal = levels.length; //one less than all levels (last level finds wife)
 
+		//calculate totals from all level data
 		for(i = 0; i < levels.length; i++)
 		{
 			carrotTotal += levels[i].carrotPositionsArray.length
@@ -1871,24 +2747,53 @@ statsBoard =
 			enemyTotal += levels[i].enemyPositionsArray.length
 		}
 
+		//calculate cave data totals
+		for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+		{
+		}
+
 		this.lives.total = livesTotal
 		this.enemies.total = enemyTotal
 		this.carrots.total = carrotTotal
 		this.children.total = childrenTotal
 
-		this.totalScore = (livesTotal * this.pointQuantities.life) + (carrotTotal * this.pointQuantities.carrot) + (enemyTotal * this.pointQuantities.enemy) + (childrenTotal * this.pointQuantities.child)
+		this.totalScore = (livesTotal * this.pointQuantities.life) + 
+						(carrotTotal * this.pointQuantities.carrot) + 
+						(enemyTotal * this.pointQuantities.enemy) + 
+						(childrenTotal * this.pointQuantities.child)
 
+		//update quantities for new level
 		this.lives.current = 1;
 		this.score = 0;
 
 	},
 
+	itemCollected: function (item)
+	{
+		if(item == "cave")
+		{
+			this.caves.thisLevel += 1
+			this.caves.totalCollected += 1
+		}
+		else if(item == "life")
+		{
+			this.lives.current += 1
+			this.lives.thisLevel += 1
+		}
+	},
+
 	updateCurrentLevel: function ()
 	{
 		this.carrots.thisLevelTotal = levels[currentLevel].carrotPositionsArray.length
+		this.caves.thisLevelTotal = levels[currentLevel].cavesData.length
 		this.enemies.thisLevelTotal = levels[currentLevel].enemyPositionsArray.length
+		this.lives.thisLevelTotal = levels[currentLevel].heartPositionsArray.length
 		this.carrots.thisLevel = 0;
+		this.carrots.totalCollected = 0;
+		this.caves.thisLevel = 0;
+		this.caves.totalCollected = 0;
 		this.enemies.thisLevel = 0;
+		this.enemies.totalKilled = 0;
 	},
 
 	handlePlayerDeath: function ()
@@ -1903,7 +2808,7 @@ statsBoard =
 			}
 			if(rabbitCharacter.getCenterPos() > resizeCanvasData.currentHeight && this.lives.current <= 0)
 			{
-				messages.drawMessageBool = true;
+				gameOver.drawMessageBool = true;
 			}
 			else if(rabbitCharacter.getCenterPos() > resizeCanvasData.currentHeight)
 			{
@@ -1925,16 +2830,23 @@ statsBoard =
 
 	pointQuantities:
 	{
-		carrot: 50,
-		life: 100,
-		child: 750,
-		enemy: 100,
+		carrot: 15,
+		life: 75,
+		child: 100,
+		enemy: 50,
 		death: 100,
+		foxHit: 10,
+		foxKilled: 50,
+		speed:  50,
+		size: 50,
+		flower: 250
 	},
 
 	lives:
 	{
 		current: 1,
+		thisLevel: 0,
+		thisLevelTotal: null,
 		total: null,
 
 	},
@@ -1948,6 +2860,14 @@ statsBoard =
 	},
 
 	carrots:
+	{
+		thisLevel: 0,
+		thisLevelTotal: null,
+		total: null,
+		totalCollected: 0
+	},
+
+	caves:
 	{
 		thisLevel: 0,
 		thisLevelTotal: null,
@@ -1970,15 +2890,15 @@ statsBoard =
 	carrotData:
 	{
 		xPos: 55,
-		yPos: 159,
-		size: 0.11
+		yPos: 100,
+		size: 0.2
 	},
 
 	heartData:
 	{
-		xPos: 180,
-		yPos: 159,
-		size: 0.2
+		xPos: 350,
+		yPos: 50,
+		size: 0.3
 	},
 
 	childrenData:
@@ -2009,8 +2929,25 @@ statsBoard =
 		for(i = 0; i < this.carrotsToStatsArray.length; i++)
 		{
 			currentCarrot = this.carrotsToStatsArray[i]
-			currentCarrot.xPos -= currentCarrot.xUpdate
-			currentCarrot.yPos -= currentCarrot.yUpdate
+
+			if(currentCarrot.xPos - scrollPos > this.carrotData.xPos)
+			{
+				currentCarrot.xPos -= currentCarrot.xUpdate
+			}
+			else
+			{
+				currentCarrot.xPos += currentCarrot.xUpdate
+			}
+
+			if(currentCarrot.yPos > this.carrotData.yPos)
+			{
+				currentCarrot.yPos -= currentCarrot.yUpdate
+			}
+			else
+			{
+				currentCarrot.yPos += currentCarrot.yUpdate
+			}
+
 			currentCarrot.size += currentCarrot.sizeUpdate
 			this.drawCarrot(currentCarrot.xPos, currentCarrot.yPos, currentCarrot.size)
 			currentCarrot.lifeSpan -= 1
@@ -2031,15 +2968,34 @@ statsBoard =
 		for(i = 0; i < this.heartsToStatsArray.length; i++)
 		{
 			currentHeart = this.heartsToStatsArray[i]
-			currentHeart.xPos -= currentHeart.xUpdate
-			currentHeart.yPos -= currentHeart.yUpdate
+
+
+			if(currentHeart.xPos > this.heartData.xPos)
+			{
+				currentHeart.xPos -= currentHeart.xUpdate
+			}
+			else
+			{
+				currentHeart.xPos += currentHeart.xUpdate
+			}
+
+			if(currentHeart.yPos > this.heartData.yPos)
+			{
+				currentHeart.yPos -= currentHeart.yUpdate
+			}
+			else
+			{
+				currentHeart.yPos += currentHeart.yUpdate
+			}
+
+
 			currentHeart.size += currentHeart.sizeUpdate
 			this.drawHeart(currentHeart.xPos, currentHeart.yPos, currentHeart.size)
 			currentHeart.lifeSpan -= 1
 			if(currentHeart.lifeSpan <= 0)
 			{
 				statsBoard.score += this.pointQuantities.life;
-				statsBoard.lives.current += 1;
+				statsBoard.itemCollected("life")
 				this.heartsToStatsArray.splice(i, 1)
 			}
 		}
@@ -2052,8 +3008,25 @@ statsBoard =
 		for(i = 0; i < this.childrenToStatsArray.length; i++)
 		{
 			currentChild = this.childrenToStatsArray[i]
-			currentChild.xPos -= currentChild.xUpdate
-			currentChild.yPos -= currentChild.yUpdate
+
+			if(currentChild.xPos > this.childrenData.xPos)
+			{
+				currentChild.xPos -= currentChild.xUpdate
+			}
+			else
+			{
+				currentChild.xPos += currentChild.xUpdate
+			}
+
+			if(currentChild.yPos > this.childrenData.yPos)
+			{
+				currentChild.yPos -= currentChild.yUpdate
+			}
+			else
+			{
+				currentChild.yPos += currentChild.yUpdate
+			}
+
 			currentChild.size += currentChild.sizeUpdate
 			this.drawRabbit(currentChild.xPos, currentChild.yPos, currentChild.size, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
 			currentChild.lifeSpan -= 1
@@ -2073,7 +3046,7 @@ statsBoard =
 		}
 	},
 
-	drawBoard: function ()
+	drawBoard: function (levelText)
 	{
 		textSize(30)
 		textAlign(LEFT)
@@ -2083,68 +3056,133 @@ statsBoard =
 		fill(255)
 		stroke(230);
 		strokeWeight(5);
-		rect(20, 20, 230, 170, 15) //main board
+		rect(20, 20, 365, 120, 15) //main board
+		rect(400, 20, 648, 50, 13) // side board
+
 		noStroke();
-
 		fill(0)
-		text("Score:", 45, 60)
+		textAlign(LEFT)
+		text(levelText, 418, 55)
+
+		//score
 		textAlign(RIGHT)
-		text(this.score, 220, 60) // score
+		text(this.score, 205, 60)
 
-		textAlign(LEFT);
-		text("Level:", 45, 90)
-		textAlign(RIGHT)
-		text(currentLevel + "/" + 5, 220, 90) // level
-
-		textSize(25)
-
-		textAlign(RIGHT);
-		text(this.children.current + "/" + this.children.total, 120, 125) // children
-		text(this.wife.current + "/" + this.wife.total, 220, 125) // wife
-
-		fill(230);
-		rect(35, 145, 200, 30, 10) // current level stats
-		fill(0)
-
-		textSize(15)
-
-		text(this.carrots.thisLevel + "/" + this.carrots.thisLevelTotal, 100, 164)
-		text(this.enemies.thisLevel + "/" + this.enemies.thisLevelTotal, 160, 164)
-		text(this.lives.current + "/" + this.lives.total, 225, 164) // lives
-		
-
-		// DRAW CARROT SYMBOL
-		this.drawCarrot(this.carrotData.xPos, this.carrotData.yPos, this.carrotData.size)
-		// DRAW LIVES SYMBOL
+		//lives
 		this.drawHeart(this.heartData.xPos, this.heartData.yPos, this.heartData.size)
-		// DRAW CHILD SYMBOL
-		this.drawRabbit(this.childrenData.xPos, this.childrenData.yPos, this.childrenData.size, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
-		// DRAW MOTHER SYMBOL
-		this.drawRabbit(this.wifeData.xPos, this.wifeData.yPos, this.wifeData.size, this.wifeData.outlineColor, this.wifeData.lightColor, this.wifeData.darkColor)
+		text(this.lives.current, 320, 60)
 
-		//DRAW ENEMY SYMBOL
-		x = 117
-		y = 162
-		s = 0.18
+		//current level data
+		currentLevelBackgroundColor = color(252, 180, 191)
+		fill(currentLevelBackgroundColor);
+		rect(35, 76, 336, 50, 10) //pink bar
+
+		//pink bar data
+		textAlign(CENTER)
+		currentLevelNumberColor = color(255, 255, 255)
+
+		fill(currentLevelNumberColor)
+
+		//carrots data
+		text(this.carrots.thisLevelTotal - this.carrots.thisLevel, 107, 110)
+
+		//enemies data
+		text(this.enemies.thisLevelTotal - this.enemies.thisLevel, 176, 110)
+		
+		//cave data
+		text(this.caves.thisLevelTotal - this.caves.thisLevel, 270, 110)
+
+		//lives data
+		text(this.lives.thisLevelTotal - this.lives.thisLevel, 346, 110)
+
+		// // DRAW CHILD SYMBOL
+		// this.drawRabbit(this.childrenData.xPos, this.childrenData.yPos, this.childrenData.size, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
+		// // DRAW MOTHER SYMBOL
+		// this.drawRabbit(this.wifeData.xPos, this.wifeData.yPos, this.wifeData.size, this.wifeData.outlineColor, this.wifeData.lightColor, this.wifeData.darkColor)
+
+		//draw carrot
+		this.drawCarrot(this.carrotData.xPos, this.carrotData.yPos, this.carrotData.size)
+
+		//draw heart
+		this.drawHeart(306, 100, 0.3)
+
+		//draw enemy
+		enemyX = 140
+		enemyY = 105
+		enemySize = 0.32
+
 		fill(enemies.enemyColors.innerFoot)
-		rect(x - (20 * s), y + (15 * s), 12 * s, 25 * s) // inner foot
+		rect(enemyX - (20 * enemySize), enemyY + (15 * enemySize), 12 * enemySize, 25 * enemySize) // inner foot
 		fill(enemies.enemyColors.body)
-		rect(x - (20 * s), y - (30 * s), 40 * s, 60 * s) // main body
+		rect(enemyX - (20 * enemySize), enemyY - (30 * enemySize), 40 * enemySize, 60 * enemySize) // main body
 		fill(enemies.enemyColors.outerFoot)
-		rect(x + (10 * s), y + (15 * s), 15 * s, 25 * s) // outer foot
+		rect(enemyX + (10 * enemySize), enemyY + (15 * enemySize), 15 * enemySize, 25 * enemySize) // outer foot
 
 		fill(enemies.enemyColors.face)
-		rect(x - (14 * s), y - (50 * s), 28 * s, 20 * s) // head
+		rect(enemyX - (14 * enemySize), enemyY - (50 * enemySize), 28 * enemySize, 20 * enemySize) // head
 		fill(enemies.enemyColors.hatBottom)
-		rect(x - (32 * s), y - (59 * s), 60 * s, 9 * s) // hat brim
+		rect(enemyX - (32 * enemySize), enemyY - (59 * enemySize), 60 * enemySize, 9 * enemySize) // hat brim
 		fill(enemies.enemyColors.hatTop)
-		rect(x - (14 * s), y - (70 * s), 28 * s, 11 * s) // hat top
+		rect(enemyX - (14 * enemySize), enemyY - (70 * enemySize), 28 * enemySize, 11 * enemySize) // hat top
 
 		fill(enemies.enemyColors.gunBottom)
-		rect(x - (14 * s), y - (7 * s), 16 * s, 10 * s) // gun handle
+		rect(enemyX - (14 * enemySize), enemyY - (7 * enemySize), 16 * enemySize, 10 * enemySize) // gun handle
 		fill(enemies.enemyColors.gunTop)
-		rect(x - (30 * s), y - (15 * s), 65 * s, 9 * s) // gun barrel
+		rect(enemyX - (30 * enemySize), enemyY - (15 * enemySize), 65 * enemySize, 9 * enemySize) // gun barrel
 
+		//draw cave
+		caveX = 222
+		caveY = 118
+		caveSize = 0.115
+		push();
+		translate(-75 * caveSize, -310 * caveSize)
+		noStroke();
+
+		//inside cave
+		fill(color(foxes.caveColors.inside))
+		beginShape();
+			vertex(caveX - (110 * caveSize), caveY + (310 * caveSize))
+			vertex(caveX - (105 * caveSize), caveY + (120 * caveSize))
+			vertex(caveX - (40 * caveSize), caveY + (40 * caveSize))
+			vertex(caveX + (170 * caveSize), caveY + (40 * caveSize))
+			vertex(caveX + (170 * caveSize), caveY + (310 * caveSize))
+		endShape();
+
+		//sorted from left -> right
+			//sorted by y
+		fill(color(foxes.caveColors.darkStone))
+		rect(caveX - (120 * caveSize), caveY + (260 * caveSize), 30 * caveSize, 30 * caveSize)
+		rect(caveX - (120 * caveSize), caveY + (205 * caveSize), 30 * caveSize, 30 * caveSize)
+		rect(caveX - (120 * caveSize), caveY + (140 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX - (90 * caveSize), caveY + (70 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX - (80 * caveSize), caveY + (50 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX - (30 * caveSize), caveY + (10 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX + (40 * caveSize), caveY + (10 * caveSize), 50 * caveSize, 50 * caveSize)
+		rect(caveX + (110 * caveSize), caveY + (25 * caveSize), 70 * caveSize, 50 * caveSize)
+		rect(caveX + (110 * caveSize), caveY + (60 * caveSize), 60 * caveSize, 60 * caveSize)
+		rect(caveX + (160 * caveSize), caveY + (70 * caveSize), 60 * caveSize, 60 * caveSize)
+		rect(caveX + (140 * caveSize), caveY + (120 * caveSize), 95 * caveSize, 95 * caveSize)
+		rect(caveX + (160 * caveSize), caveY + (170 * caveSize), 85 * caveSize, 85 * caveSize)
+		rect(caveX + (200 * caveSize), caveY + (230 * caveSize), 80 * caveSize, 80 * caveSize)
+
+		fill(color(foxes.caveColors.lightStone))
+		rect(caveX - (120 * caveSize), caveY + (280 * caveSize), 30 * caveSize, 30 * caveSize)
+		rect(caveX - (140 * caveSize), caveY + (270 * caveSize), 30 * caveSize, 30 * caveSize)
+		rect(caveX - (130 * caveSize), caveY + (230 * caveSize), 35 * caveSize, 35 * caveSize)
+		rect(caveX - (130 * caveSize), caveY + (180 * caveSize), 30 * caveSize, 30 * caveSize)
+		rect(caveX - (110 * caveSize), caveY + (100 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX - (60 * caveSize), caveY + (25 * caveSize), 40 * caveSize, 40 * caveSize)
+		rect(caveX, caveY, 50 * caveSize, 50 * caveSize)
+		rect(caveX + (80 * caveSize), caveY + (30 * caveSize), 55 * caveSize, 55 * caveSize)
+		rect(caveX + (90 * caveSize), caveY + (15 * caveSize), 70 * caveSize, 50 * caveSize)
+		rect(caveX + (140 * caveSize), caveY + (80 * caveSize), 45 * caveSize, 45 * caveSize)
+		rect(caveX + (200 * caveSize), caveY + (125 * caveSize), 25 * caveSize, 25 * caveSize)
+		rect(caveX + (130 * caveSize), caveY + (140 * caveSize), 65 * caveSize, 65 * caveSize)
+		rect(caveX + (140 * caveSize), caveY + (220 * caveSize), 90 * caveSize, 90 * caveSize)
+		rect(caveX + (210 * caveSize), caveY + (180 * caveSize), 55 * caveSize, 55 * caveSize)
+		rect(caveX + (250 * caveSize), caveY + (270 * caveSize), 40 * caveSize, 40 * caveSize)
+
+		pop();
 
 	},
 
@@ -2154,7 +3192,7 @@ statsBoard =
 		fill(carrots.innerColor)
 		//main carrot
 		push();
-		translate(-(60 * s), 0)
+		translate(-(60 * s))
 		rect(x + (20 * s), y - (40 * s), 80 * s, 80 * s)
 		rect(x, y, 60 * s, 60 * s)
 		rect(x - (20 * s), y + (40 * s), 40 * s, 40 * s)
@@ -2169,6 +3207,7 @@ statsBoard =
 		rect(0, -4 * s, 60 * s, 25 * s);
 		rotate(-45);
 		rect(-10 * s, -12.5 * s, 60 * s, 25 * s);
+		
 		pop();
 		pop();
 	},
@@ -2281,7 +3320,7 @@ canyons =
 			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()) && rabbitCharacter.isDead == false && statsBoard.deathHandled == false)
 			{
 				rabbitCharacter.isDead = true;
-			
+				powerups.deactivatePowerups("both")
 			}
 			fill(this.color);
 			rect(this.canyonsArray[i].x, floorPos_y - 1, this.canyonsArray[i].canyonWidth, 400)
@@ -2651,7 +3690,6 @@ clouds =
 				rect(currentRect.x, currentRect.y, currentRect.size, currentRect.size)
 				pop();
 				noStroke();
-				fill(255, 0, 0);
 			}
 		}
 	}
@@ -2686,7 +3724,17 @@ carrots =
 				carrotX = this.x
 				carrotY = this.currentYPos + (10 * this.size)
 				carrotRadius = this.size * 180
-				return dist(carrotX, carrotY, charX, charY) < carrotRadius / 2
+
+				if(powerups.superSizeData.superSized)
+				{
+					carrotRadius = (this.size * 90) * 2
+				}
+				else
+				{
+					carrotRadius = this.size * 90
+				}
+				
+				return dist(carrotX, carrotY, charX, charY) < carrotRadius
 
 			},
 			cloudData: {onCloud: false, cloudIdx: null}
@@ -2714,7 +3762,7 @@ carrots =
 				if(!this.carrotArray[i].beenCollected)
 				{
 					playSound("carrotCollected")
-					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(255, 215, 0), color(218, 165, 32), this.carrotArray[i])
+					collectedAnimations.addAnimation(this.carrotArray[i].x, this.carrotArray[i].carrotFloorPosY, color(248, 187, 0), color(248, 150, 0), this.carrotArray[i])
 					statsBoard.addPoints(statsBoard.pointQuantities.carrot)
 				}
 				this.carrotArray[i].beenCollected = true;
@@ -2755,8 +3803,14 @@ carrots =
 				{
 					c = this.carrotArray[i]
 					duration = 50 // controls duration in # of frames of collectables going to stats board
-					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, yPos: c.y + heightPos, size: c.size, lifeSpan: duration,
-														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / duration, yUpdate: abs((c.y + heightPos) - statsBoard.carrotData.yPos) / duration, sizeUpdate: (statsBoard.carrotData.size - c.size) / duration})
+					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, 
+														yPos: c.y + heightPos, 
+														size: c.size, 
+														lifeSpan: duration,
+														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / duration, 
+														yUpdate: abs((c.y + heightPos) - statsBoard.carrotData.yPos) / duration, 
+														sizeUpdate: (statsBoard.carrotData.size - c.size) / duration
+														})
 					this.carrotArray.splice(i, 1);
 					continue;
 				}
@@ -2802,6 +3856,7 @@ drawTerrain =
 	{
 		noStroke();
 		density = size * 1.5
+		originalGroundStart = groundStart
 
 		while(groundStart < groundEnd)
 		{
@@ -2812,6 +3867,7 @@ drawTerrain =
 			
 			// updates last square in the row so that it doesn't draw over row
 			lastColumn = groundStart + density >= groundEnd
+			firstColumn = groundStart == originalGroundStart
 
 			currentX = groundStart
 
@@ -2823,6 +3879,12 @@ drawTerrain =
 					currentX -= size / 2
 				}
 			}
+
+			if(firstColumn)
+			{
+				yPos += size / 2
+			}
+
 
 			//draw the grass
 			if(random(0, 1) < 0.5)
@@ -2840,6 +3902,11 @@ drawTerrain =
 									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, height), 
 									width: random(widthRandom[0], widthRandom[1]),
 									height: random(heightRandom[0], heightRandom[1])})
+			}
+
+			if(firstColumn)
+			{
+				yPos -= size / 2
 			}
 
 			groundStart += density;
@@ -2897,7 +3964,7 @@ drawTerrain =
 
 	drawCurrentTerrain: function (currentGround, currentPlatforms)
 	{
-		this.updateFoxesOnGround()
+		this.updateAnimalsOnGround()
 		this.updateAnimalsOnPlatforms()
 
 		for(rectIdx = 0; rectIdx < currentGround.length; rectIdx++)
@@ -2976,14 +4043,33 @@ drawTerrain =
 		}
 	},
 
-	updateFoxesOnGround: function ()
+	updateAnimalsOnGround: function ()
 	{
 		//loop through all ground objects
-
 		for(groundSectionIdx = 0; groundSectionIdx < levels[currentLevel].groundPositionsArray.length; groundSectionIdx++)
 		{
 			currentGroundStart = levels[currentLevel].groundPositionsArray[groundSectionIdx][0]
 			currentGroundEnd = levels[currentLevel].groundPositionsArray[groundSectionIdx][1]
+
+			//check for rabbit on ground
+
+			distFromGroundNecessary = 20
+
+			//update character on clouds
+			gameCharXInRange = (rabbitCharacter.realWorldPos > currentGroundStart &&
+								rabbitCharacter.realWorldPos < currentGroundEnd);
+
+			gameCharYInRange = abs((rabbitCharacter.yPos) - (floorPos_y + heightPos)) < distFromGroundNecessary
+
+			onGround = gameCharXInRange && gameCharYInRange
+			
+			if(onGround && rabbitCharacter.jumpingData.currentlyJumping == false && rabbitCharacter.isDead == false)
+			{
+				//align rabbit ypos with the ground
+				rabbitCharacter.yPos = floorPos_y + heightPos
+			}
+
+
 
 			//loop through caves and foxes to check if they're on the ground
 			for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
@@ -3033,26 +4119,19 @@ rabbitCharacter =
 	onFloor: true,
 	isDead: false,
 
-	setCharData: function ()
-	{
-		this.xPos = levels[currentLevel].characterXStart
-		this.yPos = levels[currentLevel].characterYStart
-		this.size = levels[currentLevel].characterSize
-	},
-
 	getFeetPos: function ()
 	{
-		return this.yPos + (215 * this.size)
+		return this.yPos
 	},
 
 	getCenterPos: function ()
 	{
-		return this.yPos + (150 * this.size)
+		return (this.yPos - (55 * this.size))
 	},
 
 	getHeadPos: function ()
 	{
-		return this.yPos + (75 * this.size)
+		return this.yPos - (150 * this.size)
 	},
 
 	userInput: {direction: "front", airCondition: "walking"},
@@ -3068,6 +4147,7 @@ rabbitCharacter =
 	{
 		currentlyRotating: false,
 		earsGoingDown: true,
+		defaultRotationValue: 80,
 		currentRotationValue: 0
 	},
 
@@ -3076,17 +4156,25 @@ rabbitCharacter =
 		currentlyJumping: false,
 		goingUpwards: true,
 		currentSpeed: 0,
-		jumpingDuration: 100
+		resetJumpDuration: 40,
+		defaultJumpDuration: 40,
+		jumpingDuration: 40
+	},
+
+	rabbitSpeedData:
+	{
+		resetSpeed: 4,
+		defaultSpeed: 4
 	},
 
 	checkOnGround: function ()
 	{
 		onFloor = abs(this.getFeetPos() - (floorPos_y + heightPos)) < 8
-
+		
 		if(onFloor && this.isDead == false)
 		{
 			rabbitCharacter.onFloor = true;
-			rabbitCharacter.yPos = (floorPos_y - 111) + heightPos
+			rabbitCharacter.yPos = floorPos_y + heightPos
 		}
 	},
 
@@ -3112,16 +4200,14 @@ rabbitCharacter =
 		if(this.onFloor && this.platformData.onPlatform)
 		{
 			platformHeight = drawTerrain.currentPlatforms[this.platformData.currentPlatformData].yPos + heightPos
-			yDiffFromFeet = this.getFeetPos() - this.yPos
-			this.yPos = platformHeight - yDiffFromFeet
+			this.yPos = platformHeight
 		}
 
 		//keep rabbit yPos aligned with current cloud
 		if(this.onFloor && this.ridingCloudData.onCloud)
 		{
 			cloudHeight = clouds.cloudsArray[this.ridingCloudData.cloudRiding].yPos + heightPos + 60
-			yDiffFromFeet = this.getFeetPos() - this.yPos
-			this.yPos = cloudHeight - yDiffFromFeet
+			this.yPos = cloudHeight
 		}
 
 		//check if rabbit is dead and draw rabbit accordingly
@@ -3202,7 +4288,7 @@ rabbitCharacter =
 		{
 			if(this.earRotationData.earsGoingDown)
 			{
-				if(this.earRotationData.currentRotationValue == 100)
+				if(this.earRotationData.currentRotationValue > this.earRotationData.customRotationValue)
 				{
 					this.earRotationData.earsGoingDown = false;
 				}
@@ -3214,7 +4300,7 @@ rabbitCharacter =
 			}
 			else
 			{
-				if(this.earRotationData.currentRotationValue == 0)
+				if(this.earRotationData.currentRotationValue < 0)
 				{
 					this.earRotationData.earsGoingDown = true;
 					this.earRotationData.currentlyRotating = false;
@@ -3225,14 +4311,21 @@ rabbitCharacter =
 				}
 			}
 		}
+		else
+		{
+			this.earRotationData.currentRotationValue = 0
+			this.earRotationData.customRotationValue = this.earRotationData.defaultRotationValue
+		}
+
 
 		//control jumping animation
 		if(this.jumpingData.currentlyJumping)
 		{	
-			this.jumpingData.jumpingDuration -= 2
+			defaultJumpDuration = this.jumpingData.defaultJumpDuration
+			this.jumpingData.jumpingDuration -= 1
 			if(this.jumpingData.goingUpwards)
 			{
-				if(this.getCenterPos() < levels[currentLevel].heightPosTop)
+				if(this.getCenterPos() + resizeCanvasData.yCanvasTranslate  < levels[currentLevel].heightPosTop)
 				{
 					heightPos += this.jumpingData.currentSpeed
 				}
@@ -3243,16 +4336,16 @@ rabbitCharacter =
 				if(this.jumpingData.jumpingDuration == 0)
 				{
 					this.jumpingData.goingUpwards = false;
-					this.jumpingData.jumpingDuration = 100;
+					this.jumpingData.jumpingDuration = defaultJumpDuration;
 				}
 				else
 				{
-					this.jumpingData.currentSpeed = map(this.jumpingData.jumpingDuration * 1.5, 2 * 1.5, 100 * 1.5, 0, 10)
+					this.jumpingData.currentSpeed = map(this.jumpingData.jumpingDuration * 1.5, 2 * 1.5, defaultJumpDuration * 1.5, 0, 10)
 				}
 			}
-			else if(this.isDead == false)
+			else if(this.isDead == false && this.jumpingData.goingUpwards == false)
 			{
-				if(this.getCenterPos() > levels[currentLevel].heightPosBottom && this.onFloor == false)
+				if(this.getCenterPos() + resizeCanvasData.yCanvasTranslate> levels[currentLevel].heightPosBottom && this.onFloor == false)
 				{
 					heightPos -= this.jumpingData.currentSpeed
 				}
@@ -3264,14 +4357,14 @@ rabbitCharacter =
 				if(this.onFloor)
 				{
 					this.jumpingData.currentlyJumping = false;
-					this.jumpingData.jumpingDuration = 100;
+					this.jumpingData.jumpingDuration = defaultJumpDuration
 					this.jumpingData.currentSpeed = 0;
 					this.jumpingData.goingUpwards = true;
 					this.userInput.airCondition = "walking";
 				}
 				else
 				{
-					this.jumpingData.currentSpeed = map((100 - this.jumpingData.jumpingDuration) * 1.5, 2 * 1.5, 100 * 1.5, 0, 10)
+					this.jumpingData.currentSpeed = map((defaultJumpDuration - this.jumpingData.jumpingDuration) * 1.5, 2 * 1.5, defaultJumpDuration * 1.5, 0, 10)
 				}
 	
 			}
@@ -3296,12 +4389,28 @@ rabbitCharacter =
 			this.legData.rightFootForward = true;
 		}
 	
+		strokeColor = null
+		if(powerups.superSizeData.superSized)
+		{
+			
+			strokeColor = color(powerups.getRainbowOutline())
+		}
+		else
+		{
+			strokeColor = 0
+		}
+
+		//show invulnerable period variables
+		showRabbitCharacter = frameCount % 5 < 4
+
 		//control graphics of character
+		push();
+		translate(0, -220 * s)
 		if(this.userInput.direction == "right")
 		{	
 			if(this.xPos < levels[currentLevel].scrollPosRight)
 			{
-				this.xPos += 4;
+				this.xPos += this.rabbitSpeedData.defaultSpeed;
 
 				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
 				{
@@ -3310,13 +4419,21 @@ rabbitCharacter =
 			}
 			else
 			{
-				scrollPos -= 4;
+				scrollPos -= this.rabbitSpeedData.defaultSpeed;
 				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "right")
 				{
 					scrollPos -= clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
 				}
 			}
-			stroke(0); //black outline color
+
+			//handles invulernable period
+			if(powerups.superSizeData.invulnerablePeriod > 0 && showRabbitCharacter)
+			{
+				pop();
+				return
+			}
+
+			stroke(strokeColor); //black outline color
 			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 			
@@ -3341,7 +4458,7 @@ rabbitCharacter =
 				rect(x + (20 * s), y + (190 * s), 15 * s, 15 * s);
 			}
 			
-			stroke(0);
+			stroke(strokeColor);
 			strokeWeight(4 * s);
 
 			push();
@@ -3375,13 +4492,12 @@ rabbitCharacter =
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
 			rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
-			fill(255, 0, 0);
 		}
 		else if(this.userInput.direction == "left")
 		{
 			if(this.xPos > levels[currentLevel].scrollPosLeft)
 			{
-				this.xPos -= 4;
+				this.xPos -= this.rabbitSpeedData.defaultSpeed;
 
 				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
 				{
@@ -3390,13 +4506,21 @@ rabbitCharacter =
 			}
 			else
 			{
-				scrollPos += 4;
+				scrollPos += this.rabbitSpeedData.defaultSpeed;
 				if(this.ridingCloudData.onCloud && clouds.cloudsArray[this.ridingCloudData.cloudRiding].direction == "left")
 				{
 					scrollPos += clouds.cloudsArray[this.ridingCloudData.cloudRiding].speed
 				}
 			}
-			stroke(0); //black outline color
+
+			//handles invulnerable period
+			if(powerups.superSizeData.invulnerablePeriod > 0 && showRabbitCharacter)
+			{
+				pop();
+				return
+			}
+
+			stroke(strokeColor); //black outline color
 			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 			
@@ -3420,7 +4544,7 @@ rabbitCharacter =
 				// rect(x + (30 * s), y + (190 * s), 15 * s, 15 * s);
 				rect(x + (20 * s), y + (190 * s), 15 * s, 15 * s);
 			}
-			stroke(0);
+			stroke(strokeColor);
 			strokeWeight(4 * s);
 
 			push();
@@ -3454,11 +4578,18 @@ rabbitCharacter =
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
 			rect(x - (45 * s), y + (169 * s), 1 * s, 1 * s); //mouth
-			fill(255, 0, 0);
 		}
 		else if(this.userInput.direction == "front")
 		{
-			stroke(0); //black outline color
+			
+			//handles invulnerable period
+			if(powerups.superSizeData.invulnerablePeriod > 0 && showRabbitCharacter)
+			{
+				pop();
+				return
+			}
+
+			stroke(strokeColor); //black outline color
 			strokeWeight(4 * s); //black outline width
 			fill(255); // white color
 
@@ -3552,8 +4683,8 @@ rabbitCharacter =
 			fill(255, 130, 197); // pink color
 			stroke(255, 130, 197); // pink color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
-			fill(255, 0, 0);
 		}
+		pop();
 	}
 }
 
@@ -3705,15 +4836,14 @@ enemies =
 
 	checkDeadEnemy: function (enemyIdx)
 	{
-		fill(255, 0, 0)
-
 		enemyInRange = dist(this.enemiesArray[enemyIdx].xPos, this.enemiesArray[enemyIdx].yPos - 60, rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos() - heightPos) < levels[currentLevel].bulletInRangeValue
 
 		if(enemyInRange && rabbitCharacter.jumpingData.goingUpwards == false)
 		{
 			rabbitCharacter.earRotationData.currentlyRotating = true;
 			rabbitCharacter.jumpingData.goingUpwards = true;
-			rabbitCharacter.jumpingData.jumpingDuration = 100
+			rabbitCharacter.earRotationData.customRotationValue = rabbitCharacter.jumpingData.defaultJumpDuration * 0.75
+			rabbitCharacter.jumpingData.jumpingDuration = round(rabbitCharacter.jumpingData.defaultJumpDuration * 0.75)
 			rabbitCharacter.userInput.airCondition = "jumping"
 
 			//update scoreboard
@@ -3756,7 +4886,17 @@ enemies =
 
 		checkContact: function (bulletX, bulletY)
 		{
-			if(dist(bulletX, bulletY, rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos) < 20)
+
+			if(powerups.superSizeData.superSized)
+			{
+				bulletInContactRadius = 20 * 2
+			}
+			else
+			{
+				bulletInContactRadius = 20
+			}
+
+			if(dist(bulletX, bulletY, rabbitCharacter.realWorldPos, rabbitCharacter.getCenterPos() - heightPos) < bulletInContactRadius)
 			{
 				return true
 			}
@@ -3778,12 +4918,17 @@ enemies =
 				//check if bullets are in contact
 				if(this.checkContact(bullet.xPos, bullet.yPos))
 				{
-					rabbitCharacter.isDead = true;
+					if(powerups.superSizeData.superSized || powerups.superSizeData.invulnerablePeriod > 0)
+					{
+						powerups.deactivatePowerups("both")
+						powerups.superSizeData.invulnerablePeriod = powerups.superSizeData.defaultInvulnerablePeriod
+					}
+					else
+					{
+						rabbitCharacter.isDead = true;
+					}
 					this.bulletsArray.splice(bulletIdx, 1) 
-				}
-
-				fill(255, 0, 0);
-				
+				}				
 
 				//update bullet position
 				if(bullet.direction == "right")
@@ -3821,6 +4966,302 @@ enemies =
 			}
 		}
 
+	}
+}
+
+birds = 
+{
+	settings:
+	{
+		startingLeft: null,
+		startingRight: null,
+		frequency: null,
+		clusterSpeed: null,
+		flapSpeed: null,
+		xRandom: null,
+		yRandom: null,
+		numOfBirds: null,
+		scale: null
+	},
+
+	birdColorData:
+	{
+		birdLight: [57, 26, 28],
+		birdDark: [7, 2, 0],
+		birdBeak: [250, 164, 28]
+	},
+	
+	drawBird: function (x, y, s, frame, direction)
+	{
+		noStroke();
+	
+		if(direction == "right")
+		{
+			if(frame == 1)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y - (14 * s), (100 * s), (14 * s))
+				rect(x + (7 * s), y - (28 * s), (56 * s), (14 * s))
+				fill(this.birdColorData.birdBeak)
+				rect(x + (86 * s), y, (28 * s), (14 * s))
+			}
+			else if(frame == 2)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y - (14 * s), (100 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x + (86 * s), y, (28 * s), (14 * s))
+			}
+			else if(frame == 3)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y + (14 * s), (100 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x + (86 * s), y, (28 * s), (14 * s))
+			}
+			else if(frame == 4)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y + (14 * s), (100 * s), (14 * s))
+				rect(x + (7 * s), y + (28 * s), (56 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x + (86 * s), y, (28 * s), (14 * s))
+			}
+		}
+		else if(direction == "left")
+		{
+			if(frame == 1)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y - (14 * s), (100 * s), (14 * s))
+				rect(x + (23 * s), y - (28 * s), (56 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x - (28 * s), y, (28 * s), (14 * s))
+			}
+			else if(frame == 2)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+		
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y - (14 * s), (100 * s), (14 * s))
+		
+				fill(this.birdColorData.birdBeak)
+				rect(x - (28 * s), y, (28 * s), (14 * s))
+			}
+			else if(frame == 3)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y + (14 * s), (100 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x - (28 * s), y, (28 * s), (14 * s))
+
+			}
+			else if(frame == 4)
+			{
+				fill(this.birdColorData.birdLight)
+				rect(x - (14 * s), y, (114 * s), (14 * s))
+
+				fill(this.birdColorData.birdDark)
+				rect(x - (7 * s), y + (14 * s), (100 * s), (14 * s))
+				rect(x + (23 * s), y + (28 * s), (56 * s), (14 * s))
+
+				fill(this.birdColorData.birdBeak)
+				rect(x - (28 * s), y, (28 * s), (14 * s))
+			}
+		}
+		
+	},
+
+	clusters: [],
+
+	generateBirdCluster: function (numOfBirds, xRandom, yRandom, scale)
+	{
+		birdsArray = []
+
+		for(i = 0; i < numOfBirds; i++)
+		{
+			b = 
+			{
+				xPos: random(-xRandom, xRandom),
+				yPos: random(-yRandom, yRandom),
+				frame: round(random(1, 4)),
+				goingUp: false,
+				scale: scale
+			}
+			birdsArray.push(b)
+		}
+
+		return birdsArray
+	},
+
+
+	generateBirdClusters: function (clusterYPositions)
+	{
+		for(clusterIdx = 0; clusterIdx < clusterYPositions.length; clusterIdx++)
+		{
+			xRandom = this.settings.xRandom
+			yRandom = this.settings.yRandom
+			numberOfBirds = this.settings.numOfBirds
+			scale = this.settings.scale
+			clusterY = clusterYPositions[clusterIdx].yPos
+			
+			cooldown = round(random(this.settings.frequency / 2, this.settings.frequency * 1.5))
+
+			if(random(0, 1) < 0.5)
+			{
+				currentCluster = {xPos: this.settings.startingLeft, 
+								yPos: clusterY, 
+								direction: "right", 
+								birds: this.generateBirdCluster(this.settings.numOfBirds, this.settings.xRandom, this.settings.yRandom, this.settings.scale),
+								cooldown: cooldown}
+			}
+
+			else
+			{
+				//UPDATE TO WINDOW XPOS!!
+				currentCluster = {xPos: this.settings.startingRight, 
+								yPos: clusterY, 
+								direction: "left", 
+								birds: this.generateBirdCluster(this.settings.numOfBirds, this.settings.xRandom, this.settings.yRandom, this.settings.scale),
+								cooldown: cooldown}
+			}
+
+			this.clusters.push(currentCluster)
+		}
+	},
+
+	drawBirdClusters: function ()
+	{
+		for(clusterIdx = 0; clusterIdx < this.clusters.length; clusterIdx++)
+		{
+			this.drawCluster(this.clusters[clusterIdx])
+		}
+
+	},
+
+	drawCluster: function (currentCluster)
+	{
+		push();
+		translate(currentCluster.xPos, currentCluster.yPos);
+
+		for(birdIdx = 0; birdIdx < currentCluster.birds.length; birdIdx ++)
+		{
+			currentBird = currentCluster.birds[birdIdx]
+			this.drawBird(currentBird.xPos, currentBird.yPos, currentBird.scale, currentBird.frame, currentCluster.direction)
+		}
+
+		if(currentCluster.direction == "right")
+		{
+			currentCluster.xPos += this.settings.clusterSpeed
+		}
+		else if(currentCluster.direction == "left")
+		{
+			currentCluster.xPos -= this.settings.clusterSpeed
+		}
+		pop();
+	},
+
+	updateBirdFlapping: function ()
+	{
+		for(clusterIdx = 0; clusterIdx < this.clusters.length; clusterIdx++)
+		{
+			currentCluster = this.clusters[clusterIdx]
+
+			for(birdIdx = 0; birdIdx < currentCluster.birds.length; birdIdx ++)
+			{
+				currentBird = currentCluster.birds[birdIdx]
+				currentFrame = currentBird.frame
+				goingUp = currentBird.goingUp
+
+				//update flapping
+				if(frameCount % this.settings.flapSpeed == 0)
+				{
+					if(currentFrame < 4 && goingUp)
+					{
+						currentBird.frame += 1
+					}
+					else if(currentFrame > 1 && !goingUp)
+					{
+						currentBird.frame -= 1
+					}
+					else if(currentFrame == 4)
+					{
+						currentBird.goingUp = false
+						currentBird.frame -= 1
+					}
+					else if(currentFrame == 1)
+					{
+						currentBird.goingUp = true
+						currentBird.frame += 1
+					}
+				}
+			}
+		}
+	},
+
+	updateClusterRespawn: function ()
+	{
+		for(clusterIdx = 0; clusterIdx < this.clusters.length; clusterIdx++)
+		{
+			currentCluster = this.clusters[clusterIdx]
+			console.log(currentCluster)
+			if(currentCluster.xPos < this.settings.startingLeft && currentCluster.direction == "left")
+			{
+				currentCluster.cooldown -= 1
+			}
+
+			if(currentCluster.xPos > this.settings.startingRight && currentCluster.direction == "right")
+			{
+				currentCluster.cooldown -= 1
+			}
+
+			if(currentCluster.cooldown < 0)
+			{
+				newCooldown = round(random(this.settings.frequency / 2, this.settings.frequency * 1.5))
+
+				if(random(0, 1) < 0.5)
+				{
+					currentCluster.cooldown = newCooldown
+					currentCluster.xPos = this.settings.startingLeft
+					currentCluster.direction = "right"
+				}
+				else
+				{
+					currentCluster.cooldown = newCooldown
+					currentCluster.xPos = this.settings.startingRight
+					currentCluster.direction = "left"
+				}
+			}
+		}
+	},
+
+	updateBoundaries: function ()
+	{
+		// this.startingRight = resizeCanvasData.currentWidth
 	}
 }
 
@@ -3894,35 +5335,59 @@ collectedAnimations =
 
 function keyPressed()
 {
-
-	if(gameLoopSound.isPlaying() == false)
+	if(editingMode)
 	{
-		gameLoopSound.loop() //starts game sound
+		moveScreenBy = 300
+
+		if(keyCode == 37)
+		{
+			scrollPos += moveScreenBy
+		}
+		else if(keyCode == 39)
+		{
+			scrollPos -= moveScreenBy
+		}
+		else if(keyCode == 38)
+		{
+			heightPos += moveScreenBy / 2
+		}
+		else if(keyCode == 40)
+		{
+			heightPos -= moveScreenBy / 2
+		}
+	}
+	else
+	{
+		if(gameLoopSound.isPlaying() == false)
+		{
+			gameLoopSound.loop() //starts game sound
+		}
+		//left arrow
+		if(keyCode == 37)
+		{
+			rabbitCharacter.userInput.direction = "left";
+		}
+		//right arrow
+		else if(keyCode == 39)
+		{
+			rabbitCharacter.userInput.direction = "right";
+		}
+		//space bar
+		if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
+		{
+			if(rabbitCharacter.ridingCloudData.onCloud || rabbitCharacter.platformData.onPlatform)
+			{
+				rabbitCharacter.platformData.onPlatform = false;
+				rabbitCharacter.ridingCloudData.onCloud = false;
+			}
+			rabbitCharacter.earRotationData.currentlyRotating = true;
+			rabbitCharacter.jumpingData.currentlyJumping = true;
+			rabbitCharacter.userInput.airCondition = "jumping"
+			rabbitCharacter.onFloor = false;
+    	}
 	}
 
-    //left arrow
-	if(keyCode == 37)
-    {
-        rabbitCharacter.userInput.direction = "left";
-    }
-    //right arrow
-    else if(keyCode == 39)
-    {
-        rabbitCharacter.userInput.direction = "right";
-    }
-	//space bar
-    if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
-    {
-		if(rabbitCharacter.ridingCloudData.onCloud || rabbitCharacter.platformData.onPlatform)
-		{
-			rabbitCharacter.platformData.onPlatform = false;
-			rabbitCharacter.ridingCloudData.onCloud = false;
-		}
-		rabbitCharacter.earRotationData.currentlyRotating = true;
-        rabbitCharacter.jumpingData.currentlyJumping = true;
-		rabbitCharacter.userInput.airCondition = "jumping"
-		rabbitCharacter.onFloor = false;
-    }
+	
 }
 
 function keyReleased()
@@ -3942,21 +5407,18 @@ function keyReleased()
 
 //--------------------LOG FRAMERATE HELPER FUNCTION--------------------//
 
-function logFrameRate(lessThan, greaterThan)
+function logFrameRate()
 {
-	fR = round(frameRate())
-	if(fR >= lessThan && fR <= greaterThan)
+	textSize(30)
+	textAlign(LEFT)
+	textFont(NESfont)
+	fill(255)
+	noStroke();
+	if(frameCount % 50 == 0)
 	{
-		console.log(lessThan + " - " + greaterThan)
+		currentFrameRate = round(frameRate())
 	}
-	else if (fR < lessThan)
-	{
-		console.log("< " + lessThan)
-	}
-	else if (fR > greaterThan)
-	{
-		console.log("> " + greaterThan)
-	}
+	text("fps: " + currentFrameRate, resizeCanvasData.currentWidth - 150, 30)
 }
 
 //--------------------OUT OF BOUNDS HELPER FUNCTION--------------------//
@@ -3973,23 +5435,26 @@ function checkOutOfBounds()
 	if(yInRange && xInRange && statsBoard.deathHandled == false)
 	{
 		rabbitCharacter.isDead = true;
+		powerups.deactivatePowerups("both")
 	} 
 }
 
 //--------------------RESIZE WINDOW FUNCTION--------------------//
 function windowResized() {
 	resizeCanvasData.currentWidth = windowWidth
-	resizeCanvasData.yCanvasTranslate += (windowHeight - resizeCanvasData.currentHeight)
+	windowHeightDifference = (windowHeight - resizeCanvasData.currentHeight)
+	resizeCanvasData.yCanvasTranslate += windowHeightDifference
 	resizeCanvasData.currentHeight = windowHeight
 	updateCanvasData()
-	messages.updateMessageDimensions()
+
+	gameOver.updateMessageDimensions()
 	resizeCanvas(windowWidth, windowHeight);
 }
 
 //--------------------CONTROLS BUTTONS--------------------//
 function mousePressed()
 {
-	if(messages.onRestartButton(mouseX, mouseY) && messages.drawMessageBool == true)
+	if(gameOver.onRestartButton(mouseX, mouseY) && gameOver.drawMessageBool == true)
 	{
 		currentLevel = 0;
 		statsBoard.children.current = 0;
