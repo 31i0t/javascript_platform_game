@@ -24,12 +24,13 @@ function preload()
 	jumpedOnEnemySound = loadSound('assets/sounds/jumpedOnEnemy.mp3')
 	purpleCarrotCollectedSound = loadSound('assets/sounds/purpleCarrotCollected.mp3')
 	superSpeedCollectedSound = loadSound('assets/sounds/superSpeedCollected.mp3')
+	introSongSound = loadSound('assets/sounds/introSong.mp3')
 
 }
 
 function setup()
 {
-	editingMode = true
+	editingMode = false
 	currentLevel = 0
 	createCanvas(windowWidth, windowHeight);
 	resizeCanvasData.currentWidth = windowWidth
@@ -62,16 +63,12 @@ function startGame()
 	foxes.caves = [];
 	powerups.powerupsArray = [];
 	birds.clusters = [];
-	statsBoard.score = 0;
-	statsBoard.lives.current = 1;
-	statsBoard.farmers.totalKilled = 0;
-	statsBoard.carrots.totalCollected = 0;
+	statsBoard.foxes.pointsPossible = 0;
 
-	frameRate(120)
+	frameRate(60)
 
 	updateCanvasData()
 
-	statsBoard.updateCurrentLevel()
 	levelText = level.levelText
 	levelTextWidth = level.levelTextWidth
 	levelChildPosition = level.levelChildPosition
@@ -80,6 +77,8 @@ function startGame()
 	foxes.caveColors = level.caveColors
 	foxes.foxColors = level.foxColors
 	foxes.addCaves(level.cavesData)
+
+	statsBoard.refreshCurrentLevel()
 
 	//update right starting pos of birds
 	level.birdSettings.startingRight = resizeCanvasData.currentWidth + 100
@@ -138,6 +137,9 @@ function startGame()
 
 function draw()
 {
+	introOutro.drawIntro()
+
+	if(introOutro.isIntro.display || introOutro.isOutro.display){return}
 
 	statsBoard.handlePlayerDeath()
 	
@@ -161,16 +163,16 @@ function draw()
 	push();
 	translate(scrollPos, heightPos);
 	trees.drawTrees()
-	canyons.drawCanyons();
 	drawTerrain.drawCurrentTerrain(currentGround, currentPlatforms)
-	collectedAnimations.animateAnimations()
-	clouds.drawClouds();
 	farmers.bullets.updateExpiredBullets()
-	farmers.bullets.drawBullets()
-	farmers.drawFarmers()
 	foxes.updateFoxes()
 	foxes.drawCaves()
+	collectedAnimations.animateAnimations()
+	canyons.drawCanyons();
+	clouds.drawClouds();
 	foxes.drawFoxes()
+	farmers.bullets.drawBullets()
+	farmers.drawFarmers()
 	pop();
 
 	rabbitCharacter.drawRabbit()
@@ -201,6 +203,8 @@ function draw()
 	birds.updateClusterRespawn()
 
 	if(gameOver.drawMessageBool){gameOver.drawMessage()}
+
+	powerups.superSizeSound()
 
 
 	
@@ -237,15 +241,503 @@ function respawn()
 
 //objects
 
-//--------------------CANVAS DIMENSIONS OBJECT (HANDLES RESIZING)--------------------//
+//--------------------HANDLES INTRO OUTRO--------------------//
+introOutro = 
+{
+	isIntro: {display: true, starting: false, duration: 600},
+	foxData: [{xPos: null, yPos: null, size: null},
+			{xPos: null, yPos: null, size: null},
+			{xPos: null, yPos: null, size: null}],
+	familyData: [{xPos: null, yPos: null, size: null, chasing: false},
+			{xPos: null, yPos: null, size: null, captured: false},
+			{xPos: null, yPos: null, size: null, captured: false},
+			{xPos: null, yPos: null, size: null, captured: false}],
+	familyDataSet: false,
+	farmerData: {xPos: null, yPos: null, size: null},
+	isOutro: false,
+	xPos: 400,
+	yPos: 500,
+	size: 1,
+	duration: 1000,
+
+	updateDimensions: function()
+	{
+		this.yPos = resizeCanvasData.currentHeight * 0.6
+	},
+
+	updateFamilySize: function ()
+	{
+		this.xPos = resizeCanvasData.currentWidth / 2
+	},
+
+	drawIntro: function ()
+	{
+		this.updateDimensions()
+
+		if(this.familyData[0].xPos > resizeCanvasData.currentWidth + 100)
+		{
+			this.isIntro.display = false;
+		}
+
+		if(this.foxData[2].xPos - (100 * this.size) > resizeCanvasData.currentWidth)
+		{
+			this.familyData[0].chasing = true;
+		}
+
+		this.updateFamilySize()
+
+		if(!this.isIntro.display){return}
+
+		if(this.isIntro.starting){this.isIntro.duration -= 1}
+
+		if(!this.isIntro.starting)
+		{
+			this.familyData = [{xPos: this.xPos - (70 * this.size), yPos: this.yPos - (72 * this.size), size: 1 * this.size, chasing: false},
+								{xPos: this.xPos + (40 * this.size), yPos: this.yPos - (96 * this.size), size: 1.4 * this.size, captured: false},
+								{xPos: this.xPos - (150 * this.size), yPos: this.yPos - (40 * this.size), size: 0.5 * this.size, captured: false},
+								{xPos: this.xPos + (140 * this.size), yPos: this.yPos - (40 * this.size), size: 0.5 * this.size, captured: false}]
+
+			this.familyDataSet = true;
+		}
+
+		background('#EF90A8')
+
+		x = this.xPos
+		y = this.yPos
+		s = this.size
+
+		fill('#210000')
+		rect(x - (400 * s), y - (10 * s), 800 * s, 10 * s) // underline
+		drawRabbit(this.familyData[1].xPos, this.familyData[1].yPos, this.familyData[1].size, statsBoard.husbandData.outlineColor, statsBoard.husbandData.lightColor, statsBoard.husbandData.darkColor)
+		drawRabbit(this.familyData[2].xPos, this.familyData[2].yPos, this.familyData[2].size, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
+		drawRabbit(this.familyData[3].xPos, this.familyData[3].yPos, this.familyData[3].size, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
+
+		this.updateFoxes()
+
+	
+		textFont(NESfont)
+		textAlign(CENTER)
+		noStroke();
+		fill(255);
+		textSize(130 * s)
+		text("Sylvia", x, y - (320 * s))
+
+		if(this.familyData[0].chasing == false)
+		{
+			drawRabbit(this.familyData[0].xPos, this.familyData[0].yPos, this.familyData[0].size, [0], [255, 130, 197], [255])
+		}
+		else
+		{
+			this.drawChasingRabbit()
+			this.familyData[0].xPos += 3;
+		}
+
+
+		textSize(40 * s)
+		fill(0)
+		noStroke();
+		if(frameCount % 40 <= 20 && !this.isIntro.starting)
+		{
+			text("PRESS ANY KEY TO PLAY", x, y + (200 * s))
+		}
+	},
+
+	drawChasingRabbit: function ()
+	{
+		x = this.familyData[0].xPos
+		y = this.familyData[0].yPos - (160 * this.size)
+		s = this.familyData[0].size
+
+		//control walking animation
+		if(this.rabbitLegData.rightFootForward == true && frameCount % 7 == 0)
+		{
+			this.rabbitLegData.backLegs.outerLegHeight = 28 * s;
+			this.rabbitLegData.backLegs.innerLegHeight = 34 * s;
+			this.rabbitLegData.frontLegs.outerLegHeight = 34 * s;
+			this.rabbitLegData.frontLegs.innerLegHeight = 28 * s;
+			this.rabbitLegData.rightFootForward = false;
+		}
+		else if(this.rabbitLegData.rightFootForward == false && frameCount % 7 == 0)
+		{
+			this.rabbitLegData.backLegs.outerLegHeight = 34 * s;
+			this.rabbitLegData.backLegs.innerLegHeight = 28 * s;
+			this.rabbitLegData.frontLegs.outerLegHeight = 28 * s;
+			this.rabbitLegData.frontLegs.innerLegHeight = 34 * s;
+			this.rabbitLegData.rightFootForward = true;
+		}
+
+
+		strokeColor = [0]
+
+		stroke(strokeColor); //black outline color
+		strokeWeight(4 * s); //black outline width
+		fill(255); // white color
+		
+		//main body part 1/2
+		rect(x - (58 * s), y + (165 * s), 20 * s, 20 * s); //tail
+		rect(x - (45 * s), y + (150 * s), 90 * s, 60 * s); //body
+		//legs
+		rect(x - (35 * s), y + (190 * s), 15 * s, this.rabbitLegData.backLegs.innerLegHeight);
+		rect(x - (45 * s), y + (190 * s), 15 * s, this.rabbitLegData.backLegs.outerLegHeight);
+		rect(x + (30 * s), y + (190 * s), 15 * s, this.rabbitLegData.frontLegs.innerLegHeight);
+		rect(x + (20 * s), y + (190 * s), 15 * s, this.rabbitLegData.frontLegs.outerLegHeight);
+		noStroke();
+		rect(x - (43 * s), y + (152 * s), 86 * s, 56 * s); //body white inner rect (covers black outline of legs)
+		
+		stroke(strokeColor);
+		strokeWeight(4 * s);
+
+		push();
+		translate(x + (10 * s) + ((20 * s) / 2), 
+				y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+		angleMode(DEGREES);
+		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+		fill(255, 130, 197); // pink color
+		stroke(255, 130, 197); // pink color
+		rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+		pop();
+
+		push();
+		translate(x + (45 * s) + ((20 * s) / 2), 
+				y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+		angleMode(DEGREES);
+		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+		fill(255, 130, 197); // pink color
+		stroke(255, 130, 197); // pink color
+		rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+		pop();
+
+		//main body part 2/2
+		rect(x, y + (120 * s), 70 * s, 60 * s); //head
+		rect(x + (30 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+		rect(x + (55 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+		//pink elements
+		fill(255, 130, 197); // pink color
+		stroke(255, 130, 197); // pink color
+		rect(x + (44 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+		noStroke();
+	},
+
+	updateFoxes: function ()
+	{
+		duration = this.isIntro.duration
+
+		if(duration < 500)
+		{
+			this.foxData[0].xPos += 5
+
+			if(dist(this.foxData[0].xPos, this.yPos, this.familyData[1].xPos, this.yPos) < 100 * this.size)
+			{
+				if(!this.familyData[1].captured)
+				{
+					this.familyData[1].yPos -= 20
+					this.familyData[1].captured = true
+				}
+				this.familyData[1].xPos = this.foxData[0].xPos + 100
+			}
+		}
+
+		if(duration < 400)
+		{
+			this.foxData[1].xPos += 5
+			if(dist(this.foxData[1].xPos, this.yPos, this.familyData[2].xPos, this.yPos) < 100 * this.size)
+			{
+				if(!this.familyData[2].captured)
+				{
+					this.familyData[2].yPos -= 60 * this.size
+					this.familyData[2].captured = true
+				}
+				this.familyData[2].xPos = this.foxData[1].xPos + (100 * this.size)
+			}
+		}
+
+		if(duration < 300)
+		{
+			this.foxData[2].xPos += 5
+
+			if(dist(this.foxData[2].xPos, this.yPos, this.familyData[3].xPos, this.yPos) < 100 * this.size)
+			{
+				if(!this.familyData[3].captured)
+				{
+					this.familyData[3].yPos -= 60 * this.size
+					this.familyData[3].captured = true
+				}
+				this.familyData[3].xPos = this.foxData[2].xPos + (100 * this.size)
+			}
+		}
+
+		for(foxIdx = 0; foxIdx < this.foxData.length; foxIdx++)
+		{
+			this.drawFoxes(this.foxData[foxIdx].xPos, this.foxData[foxIdx].yPos, this.foxData[foxIdx].size)
+		}
+	},
+
+	startKidnappers: function ()
+	{
+		this.foxData[0].yPos = this.yPos - (10 * this.size)
+		this.foxData[1].yPos = this.yPos - (10 * this.size)
+		this.foxData[2].yPos = this.yPos - (10 * this.size)
+
+		this.foxData[0].xPos = 0 - (150 * this.size);
+		this.foxData[1].xPos = 0 - (150 * this.size);
+		this.foxData[2].xPos = 0 - (150 * this.size);
+
+		this.foxData[0].size = 1.5 * this.size
+		this.foxData[1].size = 1.5 * this.size
+		this.foxData[2].size = 1.5 * this.size	
+
+		this.farmerData = {xPos: 0 - (150 * this.size), 
+						yPos: this.yPos - (65 * this.size), 
+						size: 1.4 * this.size}
+	},
+
+	foxLegData: 
+	{
+		//initialize fox data used to control walking animation
+		rightFootForward: true,
+		backLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null,  innerLegHeight: null},
+		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
+	},
+
+	rabbitLegData:
+	{
+		//initialize fox data used to control walking animation
+		rightFootForward: true,
+		backLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null,  innerLegHeight: null},
+		frontLegs: {outerLegPos: null, innerLegPos: null, outerLegHeight: null, innerLegHeight: null}
+	},
+
+	drawFoxes: function (x, y, s)
+	{
+		noStroke();
+
+		//control walking animation
+		if(this.foxLegData.rightFootForward == true && frameCount % 7 == 0)
+		{
+			this.foxLegData.backLegs.outerLegHeight = 28 * s;
+			this.foxLegData.backLegs.innerLegHeight = 34 * s;
+			this.foxLegData.frontLegs.outerLegHeight = 34 * s;
+			this.foxLegData.frontLegs.innerLegHeight = 28 * s;
+			this.foxLegData.rightFootForward = false;
+		}
+		else if(this.foxLegData.rightFootForward == false && frameCount % 7 == 0)
+		{
+			this.foxLegData.backLegs.outerLegHeight = 34 * s;
+			this.foxLegData.backLegs.innerLegHeight = 28 * s;
+			this.foxLegData.frontLegs.outerLegHeight = 28 * s;
+			this.foxLegData.frontLegs.innerLegHeight = 34 * s;
+			this.foxLegData.rightFootForward = true;
+		}
+
+		foxLightColor = [255, 127, 9]
+		foxDarkColor = [206, 44, 0]
+		foxHighlightColor = [216, 220, 226]
+		foxOutlineColor = [77, 18, 0]
+		push();
+		translate(0, -225 * s);
+
+		//tail colors
+		fill(foxLightColor)
+		beginShape()
+			vertex(x - (60 * s), y + (152 * s));
+			vertex(x - (95 * s), y + (154 * s));
+			vertex(x - (120 * s), y + (195 * s));
+			vertex(x - (80 * s), y + (165 * s));
+			vertex(x - (60 * s), y + (158 * s));
+		endShape()
+
+		fill(foxDarkColor)
+		beginShape()
+			vertex(x - (60 * s), y + (164 * s));
+			vertex(x - (75 * s), y + (185 * s));
+			vertex(x - (120 * s), y + (195 * s));
+			vertex(x - (80 * s), y + (165 * s));
+			vertex(x - (60 * s), y + (158 * s));
+		endShape()
+
+		fill(foxHighlightColor)
+		beginShape()
+			vertex(x - (120 * s), y + (195 * s));
+			vertex(x - (108 * s), y + (175 * s));
+			vertex(x - (97 * s), y + (190 * s));
+		endShape()
+
+		//tail
+		noFill();
+		beginShape();
+			vertex(x - (60 * s), y + (152 * s));
+			vertex(x - (95 * s), y + (154 * s));
+			vertex(x - (120 * s), y + (195 * s));
+			vertex(x - (75 * s), y + (185 * s));
+			vertex(x - (60 * s), y + (164 * s));
+		endShape();
+
+		rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //body
+
+		//inner legs
+		fill(foxDarkColor)
+		rect(x - (50 * s), y + (190 * s), 15 * s, this.foxLegData.backLegs.innerLegHeight);
+		rect(x + (30 * s), y + (190 * s), 15 * s, this.foxLegData.frontLegs.innerLegHeight);
+		
+		//inner leg styling
+		fill(foxOutlineColor)
+		rect(x - (50 * s), y + (180 * s) + this.foxLegData.backLegs.innerLegHeight, 15 * s, 10 * s);
+		rect(x + (30 * s), y + (180 * s) + this.foxLegData.frontLegs.innerLegHeight, 15 * s, 10 * s);
+
+
+		fill(foxDarkColor)
+		//outer legs
+		rect(x - (60 * s), y + (190 * s), 15 * s, this.foxLegData.backLegs.outerLegHeight);
+		rect(x + (20 * s), y + (190 * s), 15 * s, this.foxLegData.frontLegs.outerLegHeight);
+
+		//outer leg styling
+		fill(foxOutlineColor)
+		rect(x - (60 * s), y + (175 * s) + this.foxLegData.backLegs.outerLegHeight, 15 * s, 15 * s);
+		rect(x + (20 * s), y + (175 * s) + this.foxLegData.frontLegs.outerLegHeight, 15 * s, 15 * s);
+
+		//body colors
+		fill(foxDarkColor)
+		rect(x - (60 * s), y + (150 * s), 105 * s, 45 * s); //bottom
+		fill(foxLightColor)
+		rect(x - (60 * s), y + (150 * s), 105 * s, 10 * s); //top
+
+		//body white belly
+		fill(foxHighlightColor);
+		beginShape();
+			vertex(x - (45 * s), y + (195 * s)) // bottom left
+			vertex(x + (3 * s), y + (195 * s)) // bottom right
+			vertex(x, y + (190 * s)) // top right
+			vertex(x - (42 * s), y + (190 * s)) // top left
+		endShape();
+
+		//left ear
+		fill(foxDarkColor)
+		beginShape();
+			vertex(x + (10 * s), y + (100 * s)) // top 
+			vertex(x + (10 * s), y + (120 * s)) // bottom
+			vertex(x + (30 * s), y + (120 * s)) // bottom inner
+		endShape(CLOSE);
+
+		//right ear
+		beginShape();
+			vertex(x + (80 * s), y + (100 * s)) // top
+			vertex(x + (80 * s), y + (120 * s)) // bottom
+			vertex(x + (60 * s), y + (120 * s)) // bottom inner
+		endShape(CLOSE);
+
+		//face colors
+		fill(foxLightColor)
+		beginShape();
+			vertex(x + (10 * s), y + (120 * s)) //top left
+			vertex(x + (80 * s), y + (120 * s))	//top right
+			vertex(x + (90 * s), y + (145 * s)) //right middle
+			vertex(x + (45 * s), y + (155 * s)) //bottom point
+			vertex(x, y + (145 * s)) //left middle
+		endShape(CLOSE);
+
+		fill(foxHighlightColor)
+		beginShape();
+			vertex(x + (90 * s), y + (145 * s)) //right middle
+			vertex(x + (45 * s), y + (180 * s)) //bottom point
+			vertex(x, y + (145 * s)) //left middle
+			vertex(x + (45 * s), y + (155 * s)) //top middle
+		endShape(CLOSE);
+
+		//face
+		noFill();
+		beginShape();
+			vertex(x + (10 * s), y + (120 * s)) //top left
+			vertex(x + (80 * s), y + (120 * s))	//top right
+			vertex(x + (90 * s), y + (145 * s)) //right middle
+			vertex(x + (45 * s), y + (180 * s)) //bottom point
+			vertex(x, y + (145 * s)) //left middle
+		endShape(CLOSE);
+
+
+		stroke(foxOutlineColor); //black outline color
+		strokeWeight(4 * s); //black outline width
+		//features
+		rect(x + (32 * s), y + (140 * s), 2 * s, 5 * s); //left eye
+		rect(x + (55 * s), y + (140 * s), 2 * s, 5 * s); //right eye
+		rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
+
+		pop();
+	},
+
+	farmerColors: {hatTop: ['#B18B55'], 
+				hatBottom: ['#714D1D'], 
+				gunTop: ['#3B4647'], 
+				gunBottom: ['#C2441B'], 
+				innerFoot: ['#C6AA80'], 
+				outerFoot: ['#D8C8A3'], 
+				body: ['#24452D'], 
+				face: ['#D9A765'],
+				bulletColor: [69]},
+
+	bullet: 
+	{
+		xPos: null, 
+		yPos: null, 
+		scale: null
+	},
+
+	drawFarmer: function ()
+	{
+
+		farmer = this.farmerData
+		s = farmer.size
+
+		//right shooter
+		fill(this.farmerColors.innerFoot)
+		rect(farmer.xPos - (20 * s), farmer.yPos + (15 * s), 12 * s, 25 * s) // inner foot
+		fill(this.farmerColors.body)
+		rect(farmer.xPos - (20 * s), farmer.yPos - (30 * s), 40 * s, 60 * s) // main body
+		fill(this.farmerColors.outerFoot)
+		rect(farmer.xPos + (10 * s), farmer.yPos + (15 * s), 15 * s, 25 * s) // outer foot
+
+		fill(this.farmerColors.face)
+		rect(farmer.xPos - (14 * s), farmer.yPos - (50 * s), 28 * s, 20 * s) // head
+		fill(this.farmerColors.hatBottom)
+		rect(farmer.xPos - (32 * s), farmer.yPos - (59 * s), 60 * s, 9 * s) // hat brim
+		fill(this.farmerColors.hatTop)
+		rect(farmer.xPos - (14 * s), farmer.yPos - (70 * s), 28 * s, 11 * s) // hat top
+
+		fill(this.farmerColors.gunBottom)
+		rect(farmer.xPos - (14 * s), farmer.yPos - (7 * s), 16 * s, 10 * s) // gun handle
+		fill(this.farmerColors.gunTop)
+		rect(farmer.xPos - (30 * s), farmer.yPos - (15 * s), 65 * s, 9 * s) // gun barrel
+
+		if(this.familyData[0].chasing == true)
+		{
+			if(farmer.xPos < resizeCanvasData.currentWidth / 6)
+			{
+				farmer.xPos += 3;
+				this.bullet.xPos = farmer.xPos, 
+				this.bullet.yPos = farmer.yPos - 10, 
+				this.bullet.scale = farmer.size
+			}
+			else 
+			{
+				fill(farmers.farmerColors.bulletColor)
+				this.bullet.xPos += 5
+				ellipse(this.bullet.xPos, this.bullet.yPos, 12 * this.bullet.scale, 12 * this.bullet.scale) // bullet round
+				rect(this.bullet.xPos - 13, this.bullet.yPos - (6 * this.bullet.scale), 12 * this.bullet.scale, 12 * this.bullet.scale) // bullet rect 
+			}
+		}
+	}
+
+}
+
+//--------------------HANDLES COLLISION BOUNDARIES--------------------//
 collisionBoundaryData = 
 {
-	friendlyObject: 25,
-	friendlyObjectSuperSize: 50,
-	bullet: 25,
-	bulletSuperSize: 50,
-	fox: 25,
-	foxSuperSize:  50
+	friendlyObject: 35,
+	friendlyObjectSuperSize: 70,
+	bullet: 15,
+	bulletSuperSize: 30,
+	fox: 20,
+	foxSuperSize:  40
 }
 
 //--------------------CANVAS DIMENSIONS OBJECT (HANDLES RESIZING)--------------------//
@@ -271,7 +763,7 @@ gameOver =
 	
 	drawMessageBool: false,
 
-	onButtonColor: [216, 235, 253],
+	onButtonColor: ['#091F4E'],
 
 	restartDimensions: {xLeft: null, xRight: null, yTop: null, yBottom: null},
 
@@ -305,18 +797,13 @@ gameOver =
 
 	},
 
-	restartGame: function ()
-	{
-
-	},
-
 	drawMessage: function ()
 	{
 		textFont(NESfont)
 		//SPACING OF LINES
 		fromTop = (this.distFromEdgeY)
 		fromBottom = (resizeCanvasData.currentHeight - this.distFromEdgeY)
-		lineSpacing = abs(fromTop - fromBottom) / 7
+		lineSpacing = abs(fromTop - fromBottom) / 8
 
 		fill(0, 0, 0, 200)
 		rect(0, 0, resizeCanvasData.currentWidth, resizeCanvasData.currentHeight)
@@ -341,11 +828,12 @@ gameOver =
 		//LEFT ALIGNED TEXT
 		textAlign(LEFT);
 		distFromLeft = this.distFromEdgeX + 20
-		text('SCORE: ' + (round(statsBoard.score / statsBoard.totalScore)) + "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text('SCORE: ' + (round(statsBoard.totalScore / statsBoard.score)) + "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
 		text('Carrots Collected', distFromLeft, fromTop + lineSpacing * 3 - (statsTextSize / 2))
-		text('farmers Killed', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
-		text('Hearts Left', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
-		text('Family Collected', distFromLeft, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text('Farmers Killed', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
+		text('Fox Caves Collected', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text('Hearts Left', distFromLeft, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text('Family Collected', distFromLeft, fromTop + lineSpacing * 7 - (statsTextSize / 2))
 
 		//RIGHT ALIGNED TEXT
 		textAlign(RIGHT);
@@ -353,35 +841,17 @@ gameOver =
 		text(statsBoard.score+"/"+statsBoard.totalScore, distFromRight, fromTop + lineSpacing * 2 - (statsTextSize / 2))
 		text(statsBoard.carrots.totalCollected+'/'+statsBoard.carrots.total, distFromRight, fromTop + lineSpacing * 3 - (statsTextSize / 2))
 		text(statsBoard.farmers.totalKilled+'/'+statsBoard.farmers.total, distFromRight, fromTop + lineSpacing * 4 - (statsTextSize / 2))
-		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
-		text(currentLevel+'/'+levels.length, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text(currentLevel+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
 
-		//RESTART BUTTON
-		rectWidth = lineSpacing * 3
-		this.restartDimensions = {xLeft: resizeCanvasData.currentWidth/2 - (rectWidth / 2), 
-								xRight: resizeCanvasData.currentWidth/2 - (rectWidth / 2) + rectWidth, 
-								yTop: fromTop + lineSpacing * 5.9, 
-								yBottom: fromTop + lineSpacing * 5.9 + lineSpacing}
-		fillColor = 100
-		if(this.onRestartButton(mouseX, mouseY))
-		{
-			fillColor = color(this.onButtonColor)
-			cursor('pointer')
-		}
-
-		fill(fillColor);
-		rect(width/2 - (rectWidth / 2), fromTop + lineSpacing * 5.9, rectWidth, lineSpacing, rectWidth / 30)
-		
-		textAlign(CENTER)
-		fill(255, 255, 255)
-		text('RESTART', resizeCanvasData.currentWidth/2, fromTop + lineSpacing * 6.6)
 
 		//SHARE BUTTON
 		rectDimensions = lineSpacing
 		this.shareDimensions = {xLeft: distFromRight - rectDimensions, 
 								xRight: distFromRight - rectDimensions + rectDimensions, 
-								yTop: fromTop + lineSpacing * 5.9, 
-								yBottom: fromTop + lineSpacing * 5.9 + rectDimensions}
+								yTop: fromTop + lineSpacing * 6.9, 
+								yBottom: fromTop + lineSpacing * 6.9 + rectDimensions}
 		fillColor = 230
 		if(this.onShareButton(mouseX, mouseY))
 		{
@@ -389,12 +859,12 @@ gameOver =
 			cursor('pointer')
 		}
 		fill(fillColor);
-		rect(distFromRight - rectDimensions, fromTop + lineSpacing * 5.9, rectDimensions, rectDimensions, rectDimensions / 15)
+		rect(distFromRight - rectDimensions, fromTop + lineSpacing * 6.9, rectDimensions, rectDimensions, rectDimensions / 15)
 		
 
 		//SHARE ICON
 		x = distFromRight - rectDimensions + (rectDimensions / 2)
-		y = fromTop + lineSpacing * 5.95 + (lineSpacing /2)
+		y = fromTop + lineSpacing * 6.95 + (lineSpacing /2)
 		s = statsTextSize / 150
 
 		push();
@@ -428,8 +898,27 @@ gameOver =
 		rotate(45);
 		rect(0, 0, 15 * s, 55 * s);
 		pop();
-
 		pop();
+
+		//RESTART BUTTON
+		rectWidth = resizeCanvasData.currentWidth / 5
+		this.restartDimensions = {xLeft: resizeCanvasData.currentWidth/2 - (rectWidth / 2), 
+								xRight: resizeCanvasData.currentWidth/2 - (rectWidth / 2) + rectWidth, 
+								yTop: fromTop + lineSpacing * 6.9, 
+								yBottom: fromTop + lineSpacing * 6.9 + lineSpacing}
+		fillColor = 100
+		if(this.onRestartButton(mouseX, mouseY))
+		{
+			fillColor = color(this.onButtonColor)
+			cursor('pointer')
+		}
+
+		fill(fillColor);
+		rect(width/2 - (rectWidth / 2), fromTop + lineSpacing * 6.9, rectWidth, lineSpacing, rectWidth / 30)
+		
+		textAlign(CENTER)
+		fill(255, 255, 255)
+		text('RESTART', resizeCanvasData.currentWidth/2, fromTop + lineSpacing * 7.5)
 
 		if(this.onRestartButton(mouseX, mouseY) || this.onShareButton(mouseX, mouseY))
 		{
@@ -588,7 +1077,7 @@ foxes =
 				}
 				else if(currentCave.dropPowerupType == "flower")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "flower", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.25, type: "flower", fromCave: true, fromFarmer: false}])
 				}
 				currentCave.droppedPowerup = true
 			}
@@ -892,7 +1381,7 @@ foxes =
 				if(currentFox.isFalling && currentFox.isDead == false)
 				{
 					currentFox.yPos += currentCave.foxSpeed
-					if(currentFox.yPos > resizeCanvasData.currentHeight)
+					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentFox.isOutside = false;
 						currentFox.xPos = currentCave.xPos
@@ -905,7 +1394,7 @@ foxes =
 				else if(currentFox.isDead == true)
 				{
 					currentFox.yPos += currentCave.foxSpeed * 2
-					if(currentFox.yPos > resizeCanvasData.currentHeight + heightPos)
+					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentCave.caveFoxesArray.splice(foxIdx, 1)
 					}
@@ -985,6 +1474,7 @@ foxes =
 				}
 				else
 				{
+					powerups.deactivatePowerups("both")
 					rabbitCharacter.isDead = true;
 				}
 			}
@@ -1641,7 +2131,7 @@ updateYObjStart = function ()
 //--------------------LEVELS OBJECT (STORES LEVEL DATA)--------------------//
 levels = 
 [
-	//level 0
+	//level 1
 	{
 		//level data
 		levelText: "Level 1: Rescue your daughter Ophelia",
@@ -1657,30 +2147,26 @@ levels =
 		heightPosBottom: null,
 		scrollPosLeft: null,
 		scrollPosRight: null,
-		skyColor: ['#88CEEC'],
+		skyColor: ['#D3D3D3'],
 		//bird data
 		birdSettings: {startingLeft: -100, startingRight: resizeCanvasData.currentWidth + 100, frequency: 200, clusterSpeed: 3, flapSpeed: 3, xRandom: 200, yRandom: 200, numOfBirds: 20, scale: 0.2},
-		birdClustersArray: [{yPos: 0}, {yPos: -800}],
+		birdClustersArray: [{yPos: 0}, {yPos: -500}],
 		birdColorData: {birdLight: [57, 26, 28], birdDark: [7, 2, 0], birdBeak: [250, 164, 28]},
 		//fox data
 		caveColors: {lightStone: [187, 192, 200], darkStone: [101, 115, 126], inside: [33, 14, 0]},
 		foxColors: {darkFurLight: [255, 127, 9], darkFurDark: [206, 44, 0], highlights: [216, 220, 226], outlineColor: [77, 18, 0]},
 		cavesData: [{xPos: 2790, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 2, foxSpeed: 2, foxGap: 200, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "speed"},
-					{xPos: 5000, yPos: 250, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 2, foxGap: 100, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "speed"},
-					{xPos: 6290, yPos: 250, size: 0.5, direction: "left", numOfFoxes: 4, foxSpeed: 3, foxGap: 100, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "size"}],
+					{xPos: 4680, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 3, foxGap: 150, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "size"},
+					{xPos: 5300, yPos: 432, size: 0.5, direction: "right", numOfFoxes: 2, foxSpeed: 4, foxGap: 100, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "flower"}],
 		//powerup data
 		//powerup format {xPos: 320, yPos: 380, size: 0.25, type: "flower", fromCave: false, fromFarmer: false}
 		powerupPositionsArray: [],
 		//carrot data
-		carrotColor: ['#E2662A'],
+		carrotColor: ['#EE891F'],
 		carrotStemColor: [35, 92, 70],
 		carrotPositionsArray: 
 			[{xPos: 780, yPos: 384, size: 0.2},
-			{xPos: 1075, yPos: 200, size: 0.2},
 			{xPos: 1185, yPos: 200, size: 0.2},
-			{xPos: 1125, yPos: 384, size: 0.2},
-			{xPos: 1350, yPos: 384, size: 0.2},
-			{xPos: 1575, yPos: 384, size: 0.2},
 			{xPos: 1575, yPos: 200, size: 0.2},
 			{xPos: 2300, yPos: 384, size: 0.2},
 			{xPos: 2500, yPos: 384, size: 0.2},
@@ -1690,37 +2176,23 @@ levels =
 			{xPos: 3400, yPos: 200, size: 0.2},
 			{xPos: 3600, yPos: 200, size: 0.2},
 			{xPos: 3850, yPos: 200, size: 0.2},
-			{xPos: 5200, yPos: 200, size: 0.2},
-			{xPos: 5350, yPos: 200, size: 0.2},
-			{xPos: 5500, yPos: 200, size: 0.2},
-			{xPos: 5650, yPos: 200, size: 0.2},
-			{xPos: 5800, yPos: 200, size: 0.2},
-			{xPos: 5950, yPos: 200, size: 0.2},
-			{xPos: 3650, yPos: -190, size: 0.2},
-			{xPos: 3800, yPos: -190, size: 0.2},
-			{xPos: 4150, yPos: -190, size: 0.2},
-			{xPos: 4290, yPos: -190, size: 0.2},
-			{xPos: 4410, yPos: -190, size: 0.2},
-			{xPos: 4760, yPos: -190, size: 0.2},
-			{xPos: 4930, yPos: -190, size: 0.2},
-			{xPos: 5280, yPos: -190, size: 0.2},
-			{xPos: 5415, yPos: -190, size: 0.2},
-			{xPos: 5545, yPos: -190, size: 0.2},
-			{xPos: 5875, yPos: -190, size: 0.2},
-			{xPos: 6035, yPos: -190, size: 0.2},
-			{xPos: 4580, yPos: -390, size: 0.2},
-			{xPos: 4680, yPos: -390, size: 0.2},
-			{xPos: 4780, yPos: -390, size: 0.2},
-			{xPos: 4915, yPos: -390, size: 0.2},
-			{xPos: 5015, yPos: -390, size: 0.2},
-			{xPos: 5115, yPos: -390, size: 0.2}],
+			{xPos: 4250, yPos: 384, size: 0.2},
+			{xPos: 4450, yPos: 384, size: 0.2},
+			{xPos: 4800, yPos: 200, size: 0.2},
+			{xPos: 5100, yPos: 200, size: 0.2},
+			{xPos: 6000, yPos: 384, size: 0.2},
+			{xPos: 6400, yPos: 384, size: 0.2},
+			{xPos: 7550, yPos: 18, size: 0.2},
+			{xPos: 7850, yPos: -164, size: 0.2},
+			{xPos: 8200, yPos: 384, size: 0.2},
+			{xPos: 8500, yPos: 384, size: 0.2},
+			{xPos: 8800, yPos: 384, size: 0.2}],
 		//lives data
 		livesColor: ['#E81B25'],
 		heartPositionsArray: 
-			[{xPos: 1300, yPos: 50, size: 0.3},
-			{xPos: 1400, yPos: 50, size: 0.3},
-			{xPos: 3500, yPos: 40, size: 0.3},
-			{xPos: 5100, yPos: 40, size: 0.3}],
+			[{xPos: 1350, yPos: 50, size: 0.3},
+			{xPos: 5500, yPos: 60, size: 0.3},
+			{xPos: 7250, yPos: 200, size: 0.3}],
 		//ground data
 		grassLight: ['#BBC622'],
 		grassDark: ['#9CB381'],
@@ -1729,25 +2201,31 @@ levels =
 		bedRockLight: ['#A5A5A5'],
 		bedRockDark: ['#494A4A'],
 		groundPositionsArray:
-			[[200, 2000], [2100, 3000], [3100, 3900]],
+			[[200, 2000], 
+			[2100, 3000], 
+			[3100, 3900],
+			[4000, 4800],
+			[5150, 7000],
+			[7100, 9500]],
 		//canyon data
 		canyonPositionsArray:
-			[],
-		canyonColor: [208,227,204],
+			[{xPos: 2000, canyonWidth: 100},
+			{xPos: 3000, canyonWidth: 100},
+			{xPos: 3900, canyonWidth: 100},
+			{xPos: 4800, canyonWidth: 350},
+			{xPos: 7000, canyonWidth: 100}],
+		canyonColor: ['#D3D3D3'],
 		//platform data
 		platformPositionsArray:
 			[{yPos: 250, platformStart: 1000, platformEnd: 1250},
 			{yPos: 250, platformStart: 1450, platformEnd: 1700},
 			{yPos: 100, platformStart: 1250, platformEnd: 1450},
 			{yPos: 250, platformStart: 3300, platformEnd: 3950},
-			{yPos: 250, platformStart: 4100, platformEnd: 6400},
-			{yPos: -140, platformStart: 3500, platformEnd: 3960},
-			{yPos: -140, platformStart: 4060, platformEnd: 4520},
-			{yPos: -140, platformStart: 4620, platformEnd: 5080},
-			{yPos: -140, platformStart: 5180, platformEnd: 5640},
-			{yPos: -140, platformStart: 5740, platformEnd: 6200},
-			{yPos: -340, platformStart: 4300, platformEnd: 5425},
-			{yPos: -515, platformStart: 4750, platformEnd: 4940}],
+			{yPos: 250, platformStart: 4600, platformEnd: 5450},
+			{yPos: 250, platformStart: 7100, platformEnd: 7400},
+			{yPos: 68, platformStart: 7400, platformEnd: 7700},
+			{yPos: -114, platformStart: 7700, platformEnd: 8000},
+			{yPos: 250, platformStart: 9200, platformEnd: 9650}],
 		platformGrassLight: [246,241,182],
 		platformGrassDark: [238,231,153],
 		platformDirtLight: [227,217,106],
@@ -1756,23 +2234,26 @@ levels =
 		platformBedRockDark: [161,126,7],
 		//cloud data
 		cloudPositionsArray: 
-			[{xPos: 0, yPos: -100, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 2000},
-			{xPos: 3400, yPos: 25, direction: "right", speed: [3, 3], maxLeft: 0, maxRight: 1400},
-			{xPos: 5000, yPos: 25, direction: "right", speed: [3, 3], maxLeft: 0, maxRight: 1100}],
+			[{xPos: 0, yPos: -100, direction: "right", speed: [5, 6], maxLeft: 0, maxRight: 3000},
+			{xPos: 5400, yPos: 50, direction: "right", speed: [5, 6], maxLeft: 0, maxRight: 1500},
+			{xPos: 8000, yPos: 50, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 700}],
 		//mountain data
 		sideMountainsColor: ['#A29F97'],
 		middleMountainColor: ['#545351'],
 		riverColor: ['#4EAAC7'],
 		snowCapColor: ['#F6F2F2'],
 		mountainPositionsArray:
-			[{xPos: 400, yPos: 432, scale: 1}],
+			[{xPos: 400, yPos: 432, scale: 1},
+			{xPos: 4250, yPos: 432, scale: 1.2},
+			{xPos: 7720, yPos: 432, scale: 0.8}],
 		//tree data
-		leavesColor: [100, 150, 102],
+		leavesColor: ['#1A4321'],
 		trunkColor: [120, 100, 40],
 		treePositionsArray:
-			[{xPos: 1900, yPos: 432, scale: 0.7},
+			[{xPos: 1120, yPos: 250, scale: 0.7},
+			{xPos: 1900, yPos: 432, scale: 0.7},
 			{xPos: 3500, yPos: 250, scale: 0.4},
-			{xPos: 5420, yPos: 250, scale: 0.4}],
+			{xPos: 6200, yPos: 432, scale: 0.4}],
 		//farmers data
 		hatTopColor: ['#B18B55'],
 		hatBottomColor: ['#714D1D'],
@@ -1784,15 +2265,306 @@ levels =
 		faceColor: ['#D9A765'],
 		bulletColor: [69],
 		farmerPositionsArray:
-			[{xPos: 4850, yPos: -380, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "flower"}],
+			[{xPos: 5350, yPos: 210, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: ""},
+			{xPos: 8095, yPos: 70, scale: 1, firingFrequency: 250, firingSpeed: 10, maxBulletDistLeft: 300, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "speed"},
+			{xPos: 9100, yPos: 392, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 300, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "flower"}],
 		//child data
-		childXPos: 4850,
-		childYPos: -545,
+		childXPos: 9450,
+		childYPos: 218,
 		childSize: 0.3,
 		childPlatformColor: ['#72452B'],
 		//yIdx updated (should only happen once)
 		yIdxUpdated: false
-	}
+	},
+	//level 2
+	{
+		//level data
+		levelText: "Level 2: Rescue your son Arvin",
+		levelTextWidth: 560,
+		levelChildPosition: [915, 28, 0.22],
+		//vital char data 
+		characterYStartHeightPos: 0,
+		characterXStartScrollPos: 0,
+		characterYStart: 432,
+		characterXStart: 520,
+		characterSize: 0.5,
+		heightPosTop: null,
+		heightPosBottom: null,
+		scrollPosLeft: null,
+		scrollPosRight: null,
+		skyColor: ['#D4E6EF'],
+		//bird data
+		birdSettings: {startingLeft: -100, startingRight: resizeCanvasData.currentWidth + 100, frequency: 200, clusterSpeed: 3, flapSpeed: 3, xRandom: 200, yRandom: 200, numOfBirds: 20, scale: 0.2},
+		birdClustersArray: [{yPos: 0}, {yPos: -500}],
+		birdColorData: {birdLight: ["#722407"], birdDark: ["#656972"], birdBeak: ["#050507"]},
+		//fox data
+		caveColors: {lightStone: [187, 192, 200], darkStone: [101, 115, 126], inside: [33, 14, 0]},
+		foxColors: {darkFurLight: [219, 127, 114], darkFurDark: [203, 112, 99], highlights: [251, 234, 216], outlineColor: [77, 18, 0]},
+		cavesData: [{xPos: 3790, yPos: -296, size: 0.5, direction: "left", numOfFoxes: 5, foxSpeed: 4, foxGap: 200, maxNumOfLives: 1, maxNumberOfFoxesOut: 5, dropPowerupType: "speed"},
+					{xPos: 8760, yPos: -114, size: 0.5, direction: "left", numOfFoxes: 5, foxSpeed: 5, foxGap: 30, maxNumOfLives: 1, maxNumberOfFoxesOut: 5, dropPowerupType: "speed"}],
+		//powerup data
+		//powerup format {xPos: 320, yPos: 380, size: 0.25, type: "flower", fromCave: false, fromFarmer: false}
+		powerupPositionsArray: [],
+		//carrot data
+		carrotColor: ['#EE891F'],
+		carrotStemColor: [35, 92, 70],
+		carrotPositionsArray: 
+			[{xPos: 650, yPos: 384, size: 0.2},
+			{xPos: 750, yPos: 384, size: 0.2},
+			{xPos: 850, yPos: 384, size: 0.2},
+			{xPos: 2600, yPos: 384, size: 0.2},
+			{xPos: 2800, yPos: 384, size: 0.2},
+			{xPos: 3000, yPos: 384, size: 0.2},
+			{xPos: 2350, yPos: 120, size: 0.2},
+			{xPos: 2830, yPos: -80, size: 0.2},
+			{xPos: 4730, yPos: 384, size: 0.2},
+			{xPos: 5950, yPos: 384, size: 0.2},
+			{xPos: 6100, yPos: 384, size: 0.2},
+			{xPos: 6250, yPos: 384, size: 0.2},
+			{xPos: 7250, yPos: 384, size: 0.2},
+			{xPos: 8000, yPos: 384, size: 0.2},
+			{xPos: 8180, yPos: 384, size: 0.2},
+			{xPos: 8360, yPos: 384, size: 0.2}],
+		//lives data
+		livesColor: ['#E81B25'],
+		heartPositionsArray: 
+			[{xPos: 1500, yPos: 382, size: 0.3},
+			{xPos: 1700, yPos: 300, size: 0.3},
+			{xPos: 1900, yPos: 300, size: 0.3},
+			{xPos: 3625, yPos: -164, size: 0.3},
+			{xPos: 7700, yPos: -164, size: 0.3},
+			{xPos: 9900, yPos: 18, size: 0.3}],
+		//ground data
+		grassLight: ['#F7F7F7'],
+		grassDark: ['#DDEBF7'],
+		dirtLight: ['#B4DAF7'],
+		dirtDark: ['#A1D2F6'],
+		bedRockLight: ['#7CC2F7'],
+		bedRockDark: ['#A0A0AA'],
+		groundPositionsArray:
+			[[200, 1600],
+			[2310, 4900],
+			[5000, 6750],
+			[6900, 7000],
+			[7050, 7150],
+			[7200, 7300],
+			[7350, 7450],
+			[7500, 7600],
+			[7750, 10000],
+			[10900, 11900]],
+		//canyon data
+		canyonPositionsArray:
+			[{xPos: 1600, canyonWidth: 710},
+			{xPos: 4900, canyonWidth: 100},
+			{xPos: 6750, canyonWidth: 150},
+			{xPos: 7000, canyonWidth: 50},
+			{xPos: 7150, canyonWidth: 50},
+			{xPos: 7300, canyonWidth: 50},
+			{xPos: 7450, canyonWidth: 50},
+			{xPos: 7600, canyonWidth: 150},
+			{xPos: 10000, canyonWidth: 900}],
+		canyonColor: ['#D4E6EF'],
+		//platform data
+		platformPositionsArray:
+			[{yPos: 350, platformStart: 1610, platformEnd: 2300},
+			{yPos: 250, platformStart: 3400, platformEnd: 3700},
+			{yPos: 68, platformStart: 3550, platformEnd: 3850},
+			{yPos: -114, platformStart: 3400, platformEnd: 3700},
+			{yPos: -296, platformStart: 3550, platformEnd: 3900},
+			{yPos: 68, platformStart: 7100, platformEnd: 7400},
+			{yPos: 250, platformStart: 7550, platformEnd: 7850},
+			{yPos: -114, platformStart: 7350, platformEnd: 8900},
+			{yPos: 250, platformStart: 9600, platformEnd: 9900},
+			{yPos: 68, platformStart: 9750, platformEnd: 10050}],
+		platformGrassLight: ['#E7E7E7'],
+		platformGrassDark: ['#7D9FCD'],
+		platformDirtLight: ['#4477BD'],
+		platformDirtDark: ['#2B2F38'],
+		platformBedRockLight: ['#454242'],
+		platformBedRockDark: ['#030F22'],
+		//cloud data
+		cloudPositionsArray: 
+			[{xPos: 2250, yPos: 100, direction: "right", speed: [3, 4], maxLeft: 0, maxRight: 960},
+			{xPos: 2730, yPos: -90, direction: "right", speed: [3, 4], maxLeft: 0, maxRight: 480},
+			{xPos: 10000, yPos: 200, direction: "right", speed: [4, 5], maxLeft: 0, maxRight: 750}],
+		//mountain data
+		sideMountainsColor: ['#A29F97'],
+		middleMountainColor: ['#545351'],
+		riverColor: ['#4EAAC7'],
+		snowCapColor: ['#F6F2F2'],
+		mountainPositionsArray:
+			[{xPos: 3350, yPos: 432, scale: 2.1},
+			{xPos: 8600, yPos: 432, scale: 2.7}],
+		//tree data
+		leavesColor: ['#EEEEEE'],
+		trunkColor: ['#F7F7F7'],
+		treePositionsArray:
+			[{xPos: 250, yPos: 432, scale: 0.7},
+			{xPos: 350, yPos: 432, scale: 0.9},
+			{xPos: 430, yPos: 432, scale: 0.5},
+			{xPos: 1320, yPos: 432, scale: 0.8},
+			{xPos: 3800, yPos: 68, scale: 0.4},
+			{xPos: 4500, yPos: 432, scale: 1.5},
+			{xPos: 5500, yPos: 432, scale: 0.8},
+			{xPos: 5650, yPos: 432, scale: 1.4},
+			{xPos: 5800, yPos: 432, scale: 0.6},
+			{xPos: 7900, yPos: -114, scale: 1.2},
+			{xPos: 7500, yPos: -114, scale: 0.8},
+			{xPos: 11800, yPos: 432, scale: 0.3},
+			{xPos: 11750, yPos: 432, scale: 0.8},
+			{xPos: 11650, yPos: 432, scale: 1.2},
+			{xPos: 11400, yPos: 432, scale: 1},
+			{xPos: 11450, yPos: 432, scale: 0.4}],
+		//farmers data
+		hatTopColor: ['#BD7F4A'],
+		hatBottomColor: ['#A56F41'],
+		gunTopColor: ['#A5A4A8'],
+		gunBottomColor: ['#808285'],
+		innerFootColor: ['#5F4025'],
+		outerFootColor: ['#764F2D'],
+		bodyColor: ['#482218'],
+		faceColor: ['#A17758'],
+		bulletColor: [69],
+		farmerPositionsArray:
+			[{xPos: 2150, yPos: 310, scale: 1, firingFrequency: 110, firingSpeed: 7, maxBulletDistLeft: 300, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "size"},
+			{xPos: 6600, yPos: 392, scale: 1, firingFrequency: 110, firingSpeed: 7, maxBulletDistLeft: 300, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "size"},
+			{xPos: 10090, yPos: 220, scale: 1, firingFrequency: 80, firingSpeed: 15, maxBulletDistLeft: 300, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: "flower"}],
+		//child data
+		childXPos: 11550,
+		childYPos: 402,
+		childSize: 0.3,
+		childPlatformColor: ['#72452B'],
+		//yIdx updated (should only happen once)
+		yIdxUpdated: false
+	},
+	//level 3
+	{
+		//level data
+		levelText: "Level 3: Rescue your husband Alfred",
+		levelTextWidth: 650,
+		levelChildPosition: [1001, 28, 0.22],
+		//vital char data 
+		characterYStartHeightPos: 0,
+		characterXStartScrollPos: 0,
+		characterYStart: 432,
+		characterXStart: 520,
+		characterSize: 0.5,
+		heightPosTop: null,
+		heightPosBottom: null,
+		scrollPosLeft: null,
+		scrollPosRight: null,
+		skyColor: ['#81CDDC'],
+		//bird data
+		birdSettings: {startingLeft: -100, startingRight: resizeCanvasData.currentWidth + 100, frequency: 200, clusterSpeed: 3, flapSpeed: 3, xRandom: 200, yRandom: 200, numOfBirds: 20, scale: 0.2},
+		birdClustersArray: [{yPos: 0}, {yPos: -500}],
+		birdColorData: {birdLight: [57, 26, 28], birdDark: [7, 2, 0], birdBeak: [250, 164, 28]},
+		//fox data
+		caveColors: {lightStone: ['#65350F'], darkStone: ['#3C280D'], inside: ['#231709']},
+		foxColors: {darkFurLight: [255, 127, 9], darkFurDark: [206, 44, 0], highlights: [216, 220, 226], outlineColor: [77, 18, 0]},
+		cavesData: [{xPos: 7000, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 8, foxSpeed: 8, foxGap: 120, maxNumOfLives: 1, maxNumberOfFoxesOut: 3, dropPowerupType: "size"},
+					{xPos: 8400, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 12, foxSpeed: 8, foxGap: 110, maxNumOfLives: 1, maxNumberOfFoxesOut: 3, dropPowerupType: "size"},
+					{xPos: 9800, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 16, foxSpeed: 8, foxGap: 100 , maxNumOfLives: 1, maxNumberOfFoxesOut: 3, dropPowerupType: "flower"}],
+		//powerup data
+		//powerup format {xPos: 320, yPos: 380, size: 0.25, type: "flower", fromCave: false, fromFarmer: false}
+		powerupPositionsArray: [],
+		//carrot data
+		carrotColor: ['#EE891F'],
+		carrotStemColor: [35, 92, 70],
+		carrotPositionsArray: 
+			[{xPos: 2450, yPos: -350, size: 0.2},
+			{xPos: 2550, yPos: -350, size: 0.2},
+			{xPos: 2650, yPos: -350, size: 0.2},
+			{xPos: 2750, yPos: -350, size: 0.2},
+			{xPos: 2850, yPos: -350, size: 0.2},
+			{xPos: 2950, yPos: -350, size: 0.2},
+			{xPos: 3050, yPos: -350, size: 0.2}],
+		//lives data
+		livesColor: ['#E81B25'],
+		heartPositionsArray: 
+			[{xPos: 900, yPos: 384, size: 0.3},
+			{xPos: 1433, yPos: 384, size: 0.3},
+			{xPos: 1966, yPos: 384, size: 0.3},
+			{xPos: 2500, yPos: 384, size: 0.3},
+			{xPos: 3600, yPos: -80, size: 0.3},
+			{xPos: 4500, yPos: 384, size: 0.3}],
+		//ground data
+		grassLight: ['#FCF3A2'],
+		grassDark: ['#FBEA76'],
+		dirtLight: ['#F7D12A'],
+		dirtDark: ['#AF682F'],
+		bedRockLight: ['#813F0D'],
+		bedRockDark: ['#7A3903'],
+		groundPositionsArray:
+			[[200, 2550],
+			[3800, 5500],
+			[5600, 10000],
+			[10200, 13350]],
+		//canyon data
+		canyonPositionsArray:
+			[{xPos: 2550, canyonWidth: 1250},
+			{xPos: 5500, canyonWidth: 100},
+			{xPos: 10000, canyonWidth: 200}],
+		canyonColor: ['#81CDDC'],
+		//platform data
+		platformPositionsArray:
+			[{yPos: -300, platformStart: 2400, platformEnd: 3100},
+			{yPos: -30, platformStart: 3100, platformEnd: 3800}],
+		platformGrassLight: ['#795C34'],
+		platformGrassDark: ['#7E481C'],
+		platformDirtLight: ['#65350F'],
+		platformDirtDark: ['#3C280D'],
+		platformBedRockLight: ['#301703'],
+		platformBedRockDark: ['#231709'],
+		//cloud data
+		cloudPositionsArray: 
+			[{xPos: 1000, yPos: 242, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 1210},
+			{xPos: 2210, yPos: 147, direction: "right", speed: [5, 6], maxLeft: 1210, maxRight: 0},
+			{xPos: 1000, yPos: -43, direction: "right", speed: [5, 6], maxLeft: 0, maxRight: 1210},
+			{xPos: 2210, yPos: 52, direction: "right", speed: [2, 3], maxLeft: 1210, maxRight: 0},
+			{xPos: 1000, yPos: -138, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 1210},
+			{xPos: 2210, yPos: -223, direction: "right", speed: [5, 6], maxLeft: 1210, maxRight: 0}],
+		//mountain data
+		sideMountainsColor: ['#D4B479'],
+		middleMountainColor: ['#F2D9A6'],
+		riverColor: ['#F2D9A6'],
+		snowCapColor: ['#F2D9A6'],
+		mountainPositionsArray:
+			[{xPos: 1700, yPos: 432, scale: 4.1},
+			{xPos: 12700, yPos: 432, scale: 3.3}],
+		//tree data
+		leavesColor: ['#1A4321'],
+		trunkColor: [120, 100, 40],
+		treePositionsArray:
+			[{xPos: 5300, yPos: 432, scale: 1.5},
+			{xPos: 5100, yPos: 432, scale: 0.8},
+			{xPos: 4950, yPos: 432, scale: 1.4},
+			{xPos: 4800, yPos: 432, scale: 0.6},
+			{xPos: 10500, yPos: 432, scale: 0.6},
+			{xPos: 10700, yPos: 432, scale: 0.8},
+			{xPos: 10900, yPos: 432, scale: 1.4},
+			{xPos: 11100, yPos: 432, scale: 0.3}],
+		//farmers data
+		hatTopColor: ['#BD7F4A'],
+		hatBottomColor: ['#A56F41'],
+		gunTopColor: ['#A5A4A8'],
+		gunBottomColor: ['#808285'],
+		innerFootColor: ['#5F4025'],
+		outerFootColor: ['#764F2D'],
+		bodyColor: ['#482218'],
+		faceColor: ['#A17758'],
+		bulletColor: [69],
+		farmerPositionsArray:
+			[{xPos: 1100, yPos: 270, scale: 1, firingFrequency: 190, firingSpeed: 12, maxBulletDistLeft: 600, maxBulletDistRight: 600, maxBulletDistIsX: false, dropPowerupType: "speed"},
+			{xPos: 2310, yPos: 80, scale: 1, firingFrequency: 190, firingSpeed: 12, maxBulletDistLeft: 600, maxBulletDistRight: 600, maxBulletDistIsX: false, dropPowerupType: "size"},
+			{xPos: 1100, yPos: -110, scale: 1, firingFrequency: 190, firingSpeed: 12, maxBulletDistLeft: 600, maxBulletDistRight: 600, maxBulletDistIsX: false, dropPowerupType: "flower"}],
+		//child data
+		childXPos: 12000,
+		childYPos: 402,
+		childSize: 0.3,
+		childPlatformColor: ['#72452B'],
+		//yIdx updated (should only happen once)
+		yIdxUpdated: false
+	},
 ]
 
 //--------------------POWERUPS OBJECT (STORES SUPER SPEED / SUPER SIZE / FLOWERS)--------------------//
@@ -1841,11 +2613,12 @@ powerups =
 		else if(powerupsToDeactivate == "speed")
 		{
 			this.superSpeedData.isActive = false
-			rabbitCharacter.jumpingData.defaultJumpDuration = rabbitCharacter.jumpingData.resetJumpDuration
+			
 			if(rabbitCharacter.jumpingData.currentlyJumping == false)
 			{
 				rabbitCharacter.jumpingData.jumpingDuration = rabbitCharacter.jumpingData.resetJumpDuration
 			}
+
 			rabbitCharacter.rabbitSpeedData.defaultSpeed = rabbitCharacter.rabbitSpeedData.resetSpeed
 		}
 		else if(powerupsToDeactivate == "both")
@@ -1903,7 +2676,7 @@ powerups =
 		invulnerablePeriod: 0,
 		powerupStemColor: [109, 78, 158],
 		powerupCarrotColor: 240,
-		defaultDuration: 2000,
+		defaultDuration: 1800,
 		duration: 0
 	},
 
@@ -1933,10 +2706,27 @@ powerups =
 		}
 	},
 
+	superSizeSound: function ()
+	{
+		if(this.superSizeData.superSized)
+		{
+			if(!purpleCarrotCollectedSound.isPlaying()){purpleCarrotCollectedSound.loop()}
+			if(gameLoopSound.isPlaying()){gameLoopSound.stop()}
+		}
+		else
+		{
+			if(purpleCarrotCollectedSound.isPlaying()){purpleCarrotCollectedSound.stop()}
+			if(!gameLoopSound.isPlaying()){gameLoopSound.loop()}
+			if(introSongSound.isPlaying()){introSongSound.stop()}
+
+
+		}
+	},
+
 	superSpeedData:
 	{
 		isActive: false,
-		defaultDuration: 1000,
+		defaultDuration: 1800,
 		duration: 0,
 		yellowColor: [255, 238, 117],
 		outlineColor: [14, 27, 79]
@@ -2144,7 +2934,7 @@ powerups =
 			fromFarmer: fromFarmer,
 			downAnimation: true,
 			beenCollected: false,
-			powerupFloorPosY: y + (s * 122),
+			powerupFloorPosY: y + (s * 112),
 			inProximity: function (charX, charY)
 			{
 				powerupX = this.x
@@ -2191,7 +2981,6 @@ powerups =
 					}
 					else if(this.powerupsArray[i].type == "size")
 					{
-						playSound("purpleCarrotCollected")
 						changeFloorPosYBy = 1.014
 						collectedAnimations.addAnimation(this.powerupsArray[i].x, this.powerupsArray[i].powerupFloorPosY * changeFloorPosYBy, color(205, 219, 140), color(176, 201, 71), this.powerupsArray[i])
 						statsBoard.addPoints(statsBoard.pointQuantities.size)
@@ -2243,11 +3032,12 @@ powerups =
 				else
 				{
 					p = this.powerupsArray[i]
+
 					duration = 10 // controls duration in # of frames of powerups going to game char
 
 					xUpdate = abs(p.x - (rabbitCharacter.realWorldPos)) / duration
 					yUpdate = abs((p.y + heightPos) - rabbitCharacter.getCenterPos()) / duration
-					sizeUpdate = (0.05 - h.size) / duration
+					sizeUpdate = (0.05 - p.size) / duration
 
 					this.powerupsToCharArray.push({xPos: p.x, 
 													yPos: p.y, 
@@ -2257,8 +3047,8 @@ powerups =
 													yUpdate: yUpdate, 
 													sizeUpdate: sizeUpdate,
 													type: p.type,
-													fromCave: this.powerupsArray[i].fromCave,
-													fromFarmer: this.powerupsArray[i].fromFarmer})
+													fromCave: p.fromCave,
+													fromFarmer: p.fromFarmer})
 
 					this.powerupsArray.splice(i, 1);
 
@@ -2303,7 +3093,7 @@ powerups =
 				currentPower.xPos += currentPower.xUpdate
 			}
 
-			if(currentPower.yPos > rabbitCharacter.getCenterPos())
+			if(currentPower.yPos + heightPos > rabbitCharacter.getCenterPos())
 			{
 				currentPower.yPos -= currentPower.yUpdate
 			}
@@ -2354,6 +3144,7 @@ powerups =
 					powerups.superSpeedData.isActive = true
 					powerups.superSpeedData.duration += powerups.superSpeedData.defaultDuration
 					rabbitCharacter.jumpingData.defaultJumpDuration = 65
+
 					if(rabbitCharacter.jumpingData.currentlyJumping == false)
 					{
 						rabbitCharacter.jumpingData.jumpingDuration = 65
@@ -2430,10 +3221,12 @@ child =
 				statsBoard.childrenToStatsArray.push({
 							xPos: this.xPos + scrollPos, 
 							yPos: this.yPos + heightPos, 
-							size: this.size, lifeSpan: duration,
-							xUpdate: abs(this.xPos - ((childBoardX) - scrollPos)) / duration, 
+							size: this.size, 
+							lifeSpan: duration,
+							xUpdate: abs((this.xPos + scrollPos) - (childBoardX)) / duration, 
 							yUpdate: abs((this.yPos + heightPos) - (childBoardY)) / duration, 
 							sizeUpdate: ((childBoardSize) - this.size) / duration})
+				
 				this.drawChildBool = false;
 			}
 		}
@@ -2451,12 +3244,28 @@ child =
 		y = this.yPos
 		s = this.size
 
+		if(currentLevel == 2)
+		{
+			outlineColor = statsBoard.husbandData.outlineColor
+			lightColor = statsBoard.husbandData.lightColor
+			darkColor = statsBoard.husbandData.darkColor
+			s = 0.6
+			y -= 16
+		}
+		else
+		{
+			outlineColor = statsBoard.childrenData.outlineColor
+			lightColor = statsBoard.childrenData.lightColor
+			darkColor = statsBoard.childrenData.darkColor
+		}
+		
+
 		if(this.drawChildBool)
 		{
 
-			stroke(statsBoard.childrenData.outlineColor); //black outline color
+			stroke(outlineColor); //black outline color
 			strokeWeight(4 * s); //black outline width
-			fill(statsBoard.childrenData.darkColor); // body color
+			fill(darkColor); // body color
 
 			push();
 			translate(0, -160 * s)
@@ -2465,8 +3274,8 @@ child =
 			translate(x - (25 * s) + ((20 * s) / 2), 
 					y + (80 * s) + (40 * s)); //center of left ear (for rotation)
 			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
-			fill(statsBoard.childrenData.lightColor); // light color
-			stroke(statsBoard.childrenData.lightColor); // light color
+			fill(lightColor); // light color
+			stroke(lightColor); // light color
 			rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
 			pop();
 
@@ -2474,8 +3283,8 @@ child =
 			translate(x + (8 * s) + ((20 * s) / 2), 
 					y + (80 * s) + (40 * s)); //center of right ear (for rotation)
 			rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
-			fill(statsBoard.childrenData.lightColor); // light color
-			stroke(statsBoard.childrenData.lightColor); // light color
+			fill(lightColor); // light color
+			stroke(lightColor); // light color
 			rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
 			pop();
 
@@ -2491,8 +3300,8 @@ child =
 			rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
 			rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
 
-			fill(statsBoard.childrenData.lightColor); // light color
-			stroke(statsBoard.childrenData.lightColor); // light color
+			fill(lightColor); // light color
+			stroke(lightColor); // light color
 			rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
 			pop();	
 		}
@@ -2516,6 +3325,7 @@ child =
 
 		if(childIsFound && this.isFound == false)
 		{
+			playSound("familyCollected")
 			this.isFound = true;
 			statsBoard.addPoints(statsBoard.pointQuantities.child)
 			collectedAnimations.addAnimation(this.xPos, this.getFeetPos(), color(196, 58, 30), color(150, 24, 0), {x: this.xPos})
@@ -2540,7 +3350,7 @@ lives =
 			originalSize: s,
 			downAnimation: true,
 			beenCollected: false,
-			heartFloorPosY: y + (s * 122),
+			heartFloorPosY: y + (s * 96),
 			inProximity: function (charX, charY)
 			{
 				heartX = this.x
@@ -2673,6 +3483,7 @@ statsBoard =
 	updateBoardScale: function ()
 	{
 		currentBoardWidth = this.boardScale.x + (1028 * this.boardScale.scale)
+
 		originalBoardWidth = 400 + levels[currentLevel].levelTextWidth
 
 		if(resizeCanvasData.currentWidth <= currentBoardWidth)
@@ -2696,7 +3507,7 @@ statsBoard =
 		carrotTotal = 0;
 		farmerTotal = 0;
 		livesTotal = 0;
-		childrenTotal = levels.length; //one less than all levels (last level finds wife)
+		cavesTotal = 0;
 
 		//calculate totals from all level data
 		for(i = 0; i < levels.length; i++)
@@ -2704,26 +3515,46 @@ statsBoard =
 			carrotTotal += levels[i].carrotPositionsArray.length
 			livesTotal += levels[i].heartPositionsArray.length
 			farmerTotal += levels[i].farmerPositionsArray.length
+			cavesTotal += levels[i].cavesData.length
 		}
 
-		//calculate cave data totals
-		for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+		//calculate cave powerup totals
+		caveTotalPowerupScore = 0
+
+		for(i = 0; i < levels.length; i++)
 		{
+			for(caveIdx = 0; caveIdx < levels[i].cavesData.length; caveIdx++)
+			{
+				if(levels[i].cavesData[caveIdx].dropPowerupType == "speed")
+				{
+					caveTotalPowerupScore += this.pointQuantities.speed
+				}
+				else if(levels[i].cavesData[caveIdx].dropPowerupType == "size")
+				{
+					caveTotalPowerupScore += this.pointQuantities.size
+				}
+				else if(levels[i].cavesData[caveIdx].dropPowerupType == "flower")
+				{
+					caveTotalPowerupScore += this.pointQuantities.flower
+				}
+			}
 		}
+
+		childrenTotal = levels.length - 1; //one less than all levels (last level finds wife)
 
 		this.lives.total = livesTotal
 		this.farmers.total = farmerTotal
 		this.carrots.total = carrotTotal
+		this.caves.total = cavesTotal
+
 		this.children.total = childrenTotal
 
 		this.totalScore = (livesTotal * this.pointQuantities.life) + 
 						(carrotTotal * this.pointQuantities.carrot) + 
 						(farmerTotal * this.pointQuantities.farmer) + 
 						(childrenTotal * this.pointQuantities.child)
-
-		//update quantities for new level
-		this.lives.current = 1;
-		this.score = 0;
+		
+		this.totalScore += caveTotalPowerupScore
 
 	},
 
@@ -2750,18 +3581,51 @@ statsBoard =
 		}
 	},
 
-	updateCurrentLevel: function ()
+	refreshGameStats: function ()
+	{
+		//lives.current is equivalent to "totalCollected"
+		this.lives.current = 1;
+		this.carrots.totalCollected = 0;
+		this.caves.totalCollected = 0;
+		this.farmers.totalKilled = 0;
+		this.score = 0;
+	},
+
+	refreshCurrentLevel: function ()
 	{
 		this.carrots.thisLevelTotal = levels[currentLevel].carrotPositionsArray.length
 		this.caves.thisLevelTotal = levels[currentLevel].cavesData.length
 		this.farmers.thisLevelTotal = levels[currentLevel].farmerPositionsArray.length
 		this.lives.thisLevelTotal = levels[currentLevel].heartPositionsArray.length
+		
 		this.carrots.thisLevel = 0;
-		this.carrots.totalCollected = 0;
 		this.caves.thisLevel = 0;
-		this.caves.totalCollected = 0;
 		this.farmers.thisLevel = 0;
-		this.farmers.totalKilled = 0;
+		this.lives.thisLevel = 0;
+
+		this.children.current = 0;
+		this.wife.current = 0;
+
+		//foxes score is dynamic, so it's added each level
+		totalFoxes = 0;
+		totalFoxLives = 0;
+		for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
+		{
+			totalFoxes += foxes.caves[caveIdx].numOfFoxes
+			
+			totalLivesInCave = 0;
+			for(foxIdx = 0; foxIdx < foxes.caves[caveIdx].caveFoxesArray.length; foxIdx++)
+			{
+				totalLivesInCave += foxes.caves[caveIdx].caveFoxesArray[foxIdx].lives
+			}
+
+			totalFoxLives += totalLivesInCave
+		}
+
+		this.foxes.pointsPossible += (totalFoxes * this.pointQuantities.foxKilled)
+		this.foxes.pointsPossible += (totalFoxLives * this.pointQuantities.foxHit)
+									
+
 	},
 
 	handlePlayerDeath: function ()
@@ -2843,6 +3707,11 @@ statsBoard =
 		totalCollected: 0
 	},
 
+	foxes:
+	{
+		pointsPossible: null,
+	},
+
 	children:
 	{
 		current: 0,
@@ -2877,14 +3746,14 @@ statsBoard =
 		
 	},
 
-	wifeData:
+	husbandData:
 	{
 		xPos: 150,
 		yPos: 120,
 		size: 0.25,
 		outlineColor: [0],
-		lightColor: [146,94,58],
-		darkColor: [127,77,45]
+		lightColor: ['#765231'],
+		darkColor: [255]
 	},
 
 	carrotsToStatsArray: [],
@@ -2974,7 +3843,10 @@ statsBoard =
 		{
 			currentChild = this.childrenToStatsArray[i]
 
-			if(currentChild.xPos > levels[currentLevel].levelChildPosition[0] + statsBoard.boardScale.x)
+			childBoardX = (levels[currentLevel].levelChildPosition[0] * this.boardScale.scale) + this.boardScale.x
+			childBoardY = (levels[currentLevel].levelChildPosition[1] * this.boardScale.scale) + this.boardScale.y
+
+			if(currentChild.xPos > childBoardX)
 			{
 				currentChild.xPos -= currentChild.xUpdate
 			}
@@ -2983,7 +3855,7 @@ statsBoard =
 				currentChild.xPos += currentChild.xUpdate
 			}
 
-			if(currentChild.yPos > levels[currentLevel].levelChildPosition[1] + statsBoard.boardScale.y)
+			if(currentChild.yPos > childBoardY)
 			{
 				currentChild.yPos -= currentChild.yUpdate
 			}
@@ -2993,7 +3865,14 @@ statsBoard =
 			}
 
 			currentChild.size += currentChild.sizeUpdate
-			this.drawRabbit(currentChild.xPos, currentChild.yPos, currentChild.size, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
+			if(currentLevel == 2)
+			{
+				drawRabbit(currentChild.xPos, currentChild.yPos, currentChild.size, this.husbandData.outlineColor, this.husbandData.lightColor, this.husbandData.darkColor)
+			}
+			else
+			{
+				drawRabbit(currentChild.xPos, currentChild.yPos, currentChild.size, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
+			}
 			currentChild.lifeSpan -= 1
 			if(currentChild.lifeSpan <= 0)
 			{
@@ -3075,9 +3954,6 @@ statsBoard =
 		//lives data
 		text(this.lives.thisLevelTotal - this.lives.thisLevel, bx + (326 * bs), by + (90 * bs))
 
-		// // DRAW MOTHER SYMBOL
-		// this.drawRabbit(this.wifeData.xPos, this.wifeData.yPos, this.wifeData.size, this.wifeData.outlineColor, this.wifeData.lightColor, this.wifeData.darkColor)
-
 		//draw carrot
 		this.drawCarrot(this.carrotData.xPos, this.carrotData.yPos, this.carrotData.size)
 
@@ -3087,8 +3963,15 @@ statsBoard =
 		//draw child
 		rabbitX = bx + (levelChildPosition[0] * bs)
 		rabbitY = by + (levelChildPosition[1] * bs)
-		this.drawRabbit(rabbitX, rabbitY, levelChildPosition[2] * bs, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
-		// this.drawRabbit()
+
+		if(currentLevel == 2)
+		{
+			drawRabbit(rabbitX, rabbitY, levelChildPosition[2] * bs, this.husbandData.outlineColor, this.husbandData.lightColor, this.husbandData.darkColor)
+		}
+		else
+		{
+			drawRabbit(rabbitX, rabbitY, levelChildPosition[2] * bs, this.childrenData.outlineColor, this.childrenData.lightColor, this.childrenData.darkColor)
+		}
 
 		//draw farmer
 		farmerX = bx + (120 * bs)
@@ -3218,52 +4101,6 @@ statsBoard =
 		rect(x + (43 * s), y + (55 * s), 15 * s, 15 * s) // very very bottom
 		pop();
 	},
-
-	drawRabbit: function(x, y, s, outlineColor, lightColor, darkColor)
-	{
-		stroke(outlineColor); //black outline color
-		strokeWeight(4 * s); //black outline width
-		fill(darkColor); // body color
-
-		push();
-		translate(0, -160 * s)
-
-		push();
-		translate(x - (25 * s) + ((20 * s) / 2), 
-				y + (80 * s) + (40 * s)); //center of left ear (for rotation)
-		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
-		fill(lightColor); // light color
-		stroke(lightColor); // light color
-		rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
-		pop();
-
-		push();
-		translate(x + (8 * s) + ((20 * s) / 2), 
-				y + (80 * s) + (40 * s)); //center of right ear (for rotation)
-		rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
-		fill(lightColor); // light color
-		stroke(lightColor); // light color
-		rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
-		pop();
-
-		//main body
-		rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
-		rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
-		rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
-		rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
-
-		//legs
-		rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
-		rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
-		rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
-		rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
-
-		fill(lightColor); // light color
-		stroke(lightColor); // light color
-		rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
-
-		pop();
-	}
 }
 
 //--------------------CANYONS OBJECT--------------------//
@@ -3428,10 +4265,10 @@ clouds =
 		gameCharXInRange = (rabbitCharacter.realWorldPos > cloudXLeft &&
 							rabbitCharacter.realWorldPos < cloudXRight);
 
-		gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (cloudY)) < 5
+		gameCharYInRange = abs(rabbitCharacter.getFeetPos() - (cloudY)) < 10
 
 		onCloud = gameCharXInRange && gameCharYInRange && rabbitCharacter.jumpingData.goingUpwards == false
-		if(onCloud)
+		if(onCloud && rabbitCharacter.isDead == false)
 		{
 			rabbitCharacter.ridingCloudData.onCloud = true;
 			rabbitCharacter.onFloor = true;
@@ -3483,7 +4320,7 @@ clouds =
 		{
 			currentCarrot = carrots.carrotArray[i]
 			xInRange = (currentCarrot.x > currentCloud.xPos + 15 && currentCarrot.x < currentCloud.xPos + 175)
-			yInRange = abs((currentCarrot.y + heightPos) - (currentCloud.yPos + heightPos)) < 50
+			yInRange = abs((currentCarrot.y + heightPos) - (currentCloud.yPos + heightPos)) < 60
 			if(xInRange && yInRange)
 			{
 				if(carrots.carrotArray[i].cloudData.onCloud == false)
@@ -3558,7 +4395,7 @@ clouds =
 		{
 			currentPowerup = powerups.powerupsArray[i]
 			xInRange = (currentPowerup.x > currentCloud.xPos + 15 && currentPowerup.x < currentCloud.xPos + 175)
-			yInRange = abs((currentPowerup.y + heightPos) - (currentCloud.yPos + heightPos)) < 60
+			yInRange = abs((currentPowerup.y + heightPos) - (currentCloud.yPos + heightPos)) < 40
 
 			if(xInRange && yInRange)
 			{
@@ -3730,7 +4567,7 @@ carrots =
 			originalSize: s,
 			downAnimation: true,
 			beenCollected: false,
-			carrotFloorPosY: y + (s * 185),
+			carrotFloorPosY: y + (s * 170),
 			inProximity: function (charX, charY)
 			{
 				carrotX = this.x
@@ -3938,8 +4775,13 @@ drawTerrain =
 
 			yPos += 100;
 			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
+			yPos += 100;
+			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
+			yPos += 100;
+			this.drawRow(bedRockLight, bedRockDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
 
-			yPos -= 50;
+
+			yPos -= 250;
 			this.drawRow(dirtLight, dirtDark, groundStart, groundEnd, yPos, generatedGround, maxHeight, 80);
 
 			yPos -= 50;
@@ -4142,7 +4984,7 @@ rabbitCharacter =
 
 	getHeadPos: function ()
 	{
-		return this.yPos - (150 * this.size)
+		return this.yPos - (135 * this.size)
 	},
 
 	userInput: {direction: "front", airCondition: "walking"},
@@ -4180,7 +5022,7 @@ rabbitCharacter =
 
 	checkOnGround: function ()
 	{
-		onFloor = abs(this.getFeetPos() - (floorPos_y + heightPos)) < 8
+		onFloor = abs(this.getFeetPos() - (floorPos_y + heightPos)) < 30
 		
 		if(onFloor && this.isDead == false)
 		{
@@ -4330,6 +5172,11 @@ rabbitCharacter =
 
 
 		//control jumping animation
+		if(!powerups.superSpeedData.isActive)
+		{
+			this.jumpingData.defaultJumpDuration = this.jumpingData.resetJumpDuration
+		}
+
 		if(this.jumpingData.currentlyJumping)
 		{	
 			defaultJumpDuration = this.jumpingData.defaultJumpDuration
@@ -4774,7 +5621,7 @@ farmers =
 			if(farmer.isDead)
 			{
 				farmer.yPos += 8;
-				if(farmer.yPos > resizeCanvasData.currentHeight)
+				if(farmer.yPos > resizeCanvasData.currentHeight + 100)
 				{
 					this.farmersArray.splice(farmerIdx, 1)
 				}
@@ -4785,15 +5632,15 @@ farmers =
 			{
 				if(farmer.dropPowerupType == "size")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos, size: 0.2, type: "size", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.2, type: "size", fromCave: false, fromFarmer: true}])
 				}
 				else if(farmer.dropPowerupType == "speed")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos, size: 0.2, type: "speed", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.2, type: "speed", fromCave: false, fromFarmer: true}])
 				}
 				else if(farmer.dropPowerupType == "flower")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos, size: 0.2, type: "flower", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.25, type: "flower", fromCave: false, fromFarmer: true}])
 				}
 				farmer.droppedPowerup = true
 			}
@@ -4882,7 +5729,6 @@ farmers =
 			rabbitCharacter.earRotationData.customRotationValue = rabbitCharacter.jumpingData.defaultJumpDuration * 0.75
 			rabbitCharacter.jumpingData.jumpingDuration = round(rabbitCharacter.jumpingData.defaultJumpDuration * 0.75)
 			rabbitCharacter.userInput.airCondition = "jumping"
-
 			return true
 		}
 		return false
@@ -4958,6 +5804,7 @@ farmers =
 					else
 					{
 						playSound("gameOver")
+						powerups.deactivatePowerups("both")
 						rabbitCharacter.isDead = true;
 					}
 					this.bulletsArray.splice(bulletIdx, 1) 
@@ -5378,8 +6225,23 @@ collectedAnimations =
 	}
 }
 
+
 function keyPressed()
 {
+
+	if(introOutro.isIntro.display)
+	{
+		if(!introOutro.isIntro.starting)
+		{
+			introOutro.startKidnappers()
+		}
+		if(!introSongSound.isPlaying()){introSongSound.play()}
+
+		introOutro.isIntro.starting = true;
+	}
+
+	if(introOutro.isIntro.display || introOutro.isOutro.display) {return}
+
 	if(editingMode)
 	{
 		moveScreenBy = 300
@@ -5403,16 +6265,10 @@ function keyPressed()
 	}
 	else
 	{
-		if(purpleCarrotCollectedSound.isPlaying())
+		//starts game sound
+		if(gameLoopSound.isPlaying() == false)
 		{
-			gameLoopSound.pause()
-		}
-		else 
-		{
-			if(gameLoopSound.isPlaying() == false)
-			{
-				gameLoopSound.loop() //starts game sound
-			}
+			if(!purpleCarrotCollectedSound.isPlaying()){gameLoopSound.loop()}
 		}
 
 		//left arrow
@@ -5426,7 +6282,7 @@ function keyPressed()
 			rabbitCharacter.userInput.direction = "right";
 		}
 		//space bar
-		if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking")
+		if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking" && rabbitCharacter.isDead == false)
 		{
 			playSound("jump")
 			if(rabbitCharacter.ridingCloudData.onCloud || rabbitCharacter.platformData.onPlatform)
@@ -5457,6 +6313,53 @@ function keyReleased()
     {
         rabbitCharacter.userInput.direction = "front";
     }
+}
+
+//--------------------DRAW RABBIT HELPER FUNCTION--------------------//
+function drawRabbit(x, y, s, outlineColor, lightColor, darkColor)
+{
+	stroke(outlineColor); //black outline color
+	strokeWeight(4 * s); //black outline width
+	fill(darkColor); // body color
+
+	push();
+	translate(0, -160 * s)
+
+	push();
+	translate(x - (25 * s) + ((20 * s) / 2), 
+			y + (80 * s) + (40 * s)); //center of left ear (for rotation)
+	rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //left ear
+	fill(lightColor); // light color
+	stroke(lightColor); // light color
+	rect(0, -(25 * s), 5 * s, 20 * s); //left inner ear
+	pop();
+
+	push();
+	translate(x + (8 * s) + ((20 * s) / 2), 
+			y + (80 * s) + (40 * s)); //center of right ear (for rotation)
+	rect(-((20 * s) / 2), -(40 * s), 20 * s, 40 * s); //right ear
+	fill(lightColor); // light color
+	stroke(lightColor); // light color
+	rect(0, -(25 * s), 5 * s, 20 * s);  //right inner ear
+	pop();
+
+	//main body
+	rect(x - (20 * s), y + (150 * s), 45 * s, 70 * s); //body
+	rect(x - (35 * s), y + (120 * s), 70 * s, 60 * s); //head
+	rect(x - (15 * s), y + (140 * s), 2 * s, 20 * s); //left eye
+	rect(x + (15 * s), y + (140 * s), 2 * s, 20 * s); //right eye
+
+	//legs
+	rect(x - (35 * s), y + (200 * s), 15 * s, 20 * s); // front left leg
+	rect(x + (25 * s), y + (190 * s), 15 * s, 30 * s); // front right leg
+	rect(x + (2 * s), y + (195 * s), 0 * s, 25 * s); // leg in middle
+	rect(x + (33 * s), y + (188 * s), 15 * s, 15 * s); //tail
+
+	fill(lightColor); // light color
+	stroke(lightColor); // light color
+	rect(x + (1 * s), y + (169 * s), 1 * s, 1 * s); //mouth
+
+	pop();
 }
 
 //--------------------OUT OF BOUNDS HELPER FUNCTION--------------------//
@@ -5500,6 +6403,7 @@ function mousePressed()
 		child.drawChildBool = true,
 		child.isFound =  false,
 		startGame()
+		statsBoard.refreshGameStats()
 	}
 }
 
@@ -5533,10 +6437,6 @@ function playSound(event)
 	else if(event == "jumpedOnEnemy")
 	{
 		jumpedOnEnemySound.play()
-	}
-	else if(event == "purpleCarrotCollected")
-	{
-		purpleCarrotCollectedSound.play()
 	}
 	else if(event == "superSpeedCollected")
 	{
