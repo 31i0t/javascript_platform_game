@@ -734,7 +734,7 @@ introOutro =
 		text(statsBoard.farmers.totalKilled+'/'+statsBoard.farmers.total, distFromRight, fromTop + lineSpacing * 4 - (statsTextSize / 2))
 		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
 		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
-		text(currentLevel+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+		text((currentLevel + 1)+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
 
 
 	}
@@ -1525,7 +1525,7 @@ foxes =
 		xInRange = (xCharacter > jumpedOnXLeft) && (xCharacter < jumpedOnXRight)
 		yInRange = abs(yCharacter - jumpedOnY) < yHeightThreshold
 
-		if(xInRange && yInRange && currentFox.isOutside && rabbitCharacter.jumpingData.currentlyJumping == true && rabbitCharacter.jumpingData.goingUpwards == false)
+		if(xInRange && yInRange && currentFox.isOutside && rabbitCharacter.jumpingData.currentlyJumping == true && rabbitCharacter.jumpingData.goingUpwards == false && currentFox.isDead == false && rabbitCharacter.isDead == false)
 		{
 			return true
 		}
@@ -3563,7 +3563,7 @@ statsBoard =
 
 		childrenTotal = levels.length - 1; //one less than all levels (last level finds wife)
 
-		this.lives.total = livesTotal
+		this.lives.total = livesTotal + 1
 		this.farmers.total = farmerTotal
 		this.carrots.total = carrotTotal
 		this.caves.total = cavesTotal
