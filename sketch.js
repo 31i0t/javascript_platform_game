@@ -266,19 +266,65 @@ introOutro =
 	size: 1,
 	duration: 1000,
 
-	updateDimensions: function()
-	{
-		this.yPos = resizeCanvasData.currentHeight * 0.6
-	},
-
-	updateFamilySize: function ()
+	updateFamilyX: function()
 	{
 		this.xPos = resizeCanvasData.currentWidth / 2
+		for(i = 0; i < 4; i++)
+		{
+			currentFamily = this.familyData[i]
+			if(i === 0 && currentFamily.chasing == false)
+			{
+				currentFamily.xPos = this.xPos - (70 * this.size)
+			}
+			if(i === 1 && currentFamily.captured == false)
+			{				
+				currentFamily.xPos = this.xPos + (40 * this.size)
+			}
+			if(i === 2 && currentFamily.captured == false)
+			{
+				currentFamily.xPos = this.xPos - (150 * this.size)
+			}
+			if(i === 3 && currentFamily.captured == false)
+			{
+				currentFamily.xPos = this.xPos + (140 * this.size)
+			}
+		}
 	},
+
+	updateFamilyY: function ()
+	{
+		this.yPos = resizeCanvasData.currentHeight * 0.6
+
+		this.foxData[0].yPos = this.yPos - (10 * this.size)
+		this.foxData[1].yPos = this.yPos - (10 * this.size)
+		this.foxData[2].yPos = this.yPos - (10 * this.size)
+		for(i = 0; i < 4; i++)
+		{
+			currentFamily = this.familyData[i]
+			if(i === 0)
+			{
+				currentFamily.yPos = this.yPos - (72 * this.size)
+			}
+			if(i === 1 && currentFamily.captured == false)
+			{				
+				currentFamily.yPos = this.yPos - (96 * this.size)
+			}
+			if(i === 2 && currentFamily.captured == false)
+			{
+				currentFamily.yPos = this.yPos - (40 * this.size)
+			}
+			if(i === 3 && currentFamily.captured == false)
+			{
+				currentFamily.yPos = this.yPos - (40 * this.size)
+			}
+		}
+	},
+
 
 	drawIntro: function ()
 	{
-		this.updateDimensions()
+		this.updateFamilyX()
+		this.updateFamilyY()
 
 		if(this.familyData[0].xPos > resizeCanvasData.currentWidth + 100)
 		{
@@ -291,8 +337,6 @@ introOutro =
 		{
 			this.familyData[0].chasing = true;
 		}
-
-		this.updateFamilySize()
 
 		if(!this.isIntro.display){return}
 
@@ -318,6 +362,7 @@ introOutro =
 
 		fill('#210000')
 		rect(x - (400 * s), y - (10 * s), 800 * s, 10 * s) // underline
+
 		drawRabbit(this.familyData[1].xPos, this.familyData[1].yPos, this.familyData[1].size, statsBoard.husbandData.outlineColor, statsBoard.husbandData.lightColor, statsBoard.husbandData.darkColor)
 		drawRabbit(this.familyData[2].xPos, this.familyData[2].yPos, this.familyData[2].size, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
 		drawRabbit(this.familyData[3].xPos, this.familyData[3].yPos, this.familyData[3].size, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
@@ -439,11 +484,9 @@ introOutro =
 
 			if(dist(this.foxData[0].xPos, this.yPos, this.familyData[1].xPos, this.yPos) < 100 * this.size)
 			{
-				if(!this.familyData[1].captured)
-				{
-					this.familyData[1].yPos -= 20
-					this.familyData[1].captured = true
-				}
+
+				this.familyData[1].yPos = this.foxData[0].yPos - 110
+				this.familyData[1].captured = true
 				this.familyData[1].xPos = this.foxData[0].xPos + 100
 			}
 		}
@@ -453,11 +496,8 @@ introOutro =
 			this.foxData[1].xPos += 5
 			if(dist(this.foxData[1].xPos, this.yPos, this.familyData[2].xPos, this.yPos) < 100 * this.size)
 			{
-				if(!this.familyData[2].captured)
-				{
-					this.familyData[2].yPos -= 60 * this.size
-					this.familyData[2].captured = true
-				}
+				this.familyData[2].yPos = this.foxData[1].yPos - 90
+				this.familyData[2].captured = true
 				this.familyData[2].xPos = this.foxData[1].xPos + (100 * this.size)
 			}
 		}
@@ -468,11 +508,8 @@ introOutro =
 
 			if(dist(this.foxData[2].xPos, this.yPos, this.familyData[3].xPos, this.yPos) < 100 * this.size)
 			{
-				if(!this.familyData[3].captured)
-				{
-					this.familyData[3].yPos -= 60 * this.size
-					this.familyData[3].captured = true
-				}
+				this.familyData[3].yPos = this.foxData[2].yPos - 90
+				this.familyData[3].captured = true
 				this.familyData[3].xPos = this.foxData[2].xPos + (100 * this.size)
 			}
 		}
