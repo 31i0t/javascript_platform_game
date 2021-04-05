@@ -283,8 +283,8 @@ introOutro =
 		if(this.familyData[0].xPos > resizeCanvasData.currentWidth + 100)
 		{
 			this.isIntro.display = false;
+			if(this.aTagCreated == true){a.remove()}
 			this.aTagCreated = false;
-			a.remove()
 		}
 
 		if(this.foxData[2].xPos + (200 * this.size) > resizeCanvasData.currentWidth)
