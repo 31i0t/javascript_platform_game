@@ -2168,7 +2168,7 @@ levels =
 		//fox data
 		caveColors: {lightStone: [187, 192, 200], darkStone: [101, 115, 126], inside: [33, 14, 0]},
 		foxColors: {darkFurLight: [255, 127, 9], darkFurDark: [206, 44, 0], highlights: [216, 220, 226], outlineColor: [77, 18, 0]},
-		cavesData: [{xPos: 2790, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 2, foxSpeed: 2, foxGap: 200, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "speed"},
+		cavesData: [{xPos: 2790, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 1, foxSpeed: 3, foxGap: 0, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "speed"},
 					{xPos: 4680, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 3, foxGap: 150, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "size"},
 					{xPos: 5300, yPos: 432, size: 0.5, direction: "right", numOfFoxes: 2, foxSpeed: 4, foxGap: 100, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "flower"}],
 		//powerup data
