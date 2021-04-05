@@ -16,6 +16,7 @@ function preload()
 	carrotCollectedSound = loadSound('assets/sounds/carrotCollected.mp3')
 	lifeCollectedSound = loadSound('assets/sounds/heartCollected.mp3')
 	gameLoopSound = loadSound('assets/sounds/gameLoop.mp3')
+	gameLoopSound.setVolume(0.4) 
 	familyCollectedSound = loadSound('assets/sounds/familyCollected.mp3')
 	flowerCollectedSound = loadSound('assets/sounds/flowerCollected.mp3')
 	gameOverSound = loadSound('assets/sounds/gameOver.mp3')
@@ -63,7 +64,8 @@ function startGame()
 	foxes.caves = [];
 	powerups.powerupsArray = [];
 	birds.clusters = [];
-	statsBoard.foxes.pointsPossible = 0;
+	child.drawChildBool = true;
+	child.isFound =  false;
 
 	frameRate(60)
 
@@ -138,8 +140,9 @@ function startGame()
 function draw()
 {
 	introOutro.drawIntro()
+	introOutro.drawOutro()
 
-	if(introOutro.isIntro.display || introOutro.isOutro.display){return}
+	if(introOutro.isIntro.display || introOutro.isOutro){return}
 
 	statsBoard.handlePlayerDeath()
 	
@@ -245,13 +248,16 @@ function respawn()
 introOutro = 
 {
 	isIntro: {display: true, starting: false, duration: 600},
+
 	foxData: [{xPos: null, yPos: null, size: null},
 			{xPos: null, yPos: null, size: null},
 			{xPos: null, yPos: null, size: null}],
+
 	familyData: [{xPos: null, yPos: null, size: null, chasing: false},
 			{xPos: null, yPos: null, size: null, captured: false},
 			{xPos: null, yPos: null, size: null, captured: false},
 			{xPos: null, yPos: null, size: null, captured: false}],
+
 	familyDataSet: false,
 	farmerData: {xPos: null, yPos: null, size: null},
 	isOutro: false,
@@ -279,7 +285,7 @@ introOutro =
 			this.isIntro.display = false;
 		}
 
-		if(this.foxData[2].xPos - (100 * this.size) > resizeCanvasData.currentWidth)
+		if(this.foxData[2].xPos + (200 * this.size) > resizeCanvasData.currentWidth)
 		{
 			this.familyData[0].chasing = true;
 		}
@@ -663,68 +669,74 @@ introOutro =
 		rect(x + (45 * s), y + (165 * s), 1 * s, 1 * s); //mouth
 
 		pop();
+
 	},
 
-	farmerColors: {hatTop: ['#B18B55'], 
-				hatBottom: ['#714D1D'], 
-				gunTop: ['#3B4647'], 
-				gunBottom: ['#C2441B'], 
-				innerFoot: ['#C6AA80'], 
-				outerFoot: ['#D8C8A3'], 
-				body: ['#24452D'], 
-				face: ['#D9A765'],
-				bulletColor: [69]},
-
-	bullet: 
+	drawOutro: function ()
 	{
-		xPos: null, 
-		yPos: null, 
-		scale: null
-	},
+		if(!this.isOutro){return}
+		
+		background('#EF90A8')
 
-	drawFarmer: function ()
-	{
+		x = resizeCanvasData.currentWidth / 2
+		y = gameOver.distFromEdgeY
+		s = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 4000
 
-		farmer = this.farmerData
-		s = farmer.size
+		//DRAW FAMILY
+		drawRabbit(x - (70 * s), y - (72 * s), 1 * s, [0], [255, 130, 197], [255])
+		drawRabbit(x + (40 * s), y - (96 * s), 1.4 * s, statsBoard.husbandData.outlineColor, statsBoard.husbandData.lightColor, statsBoard.husbandData.darkColor)
+		drawRabbit(x - (150 * s), y - (40 * s), 0.5 * s, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
+		drawRabbit(x + (140 * s), y - (40 * s), 0.5 * s, statsBoard.childrenData.outlineColor, statsBoard.childrenData.lightColor, statsBoard.childrenData.darkColor)
 
-		//right shooter
-		fill(this.farmerColors.innerFoot)
-		rect(farmer.xPos - (20 * s), farmer.yPos + (15 * s), 12 * s, 25 * s) // inner foot
-		fill(this.farmerColors.body)
-		rect(farmer.xPos - (20 * s), farmer.yPos - (30 * s), 40 * s, 60 * s) // main body
-		fill(this.farmerColors.outerFoot)
-		rect(farmer.xPos + (10 * s), farmer.yPos + (15 * s), 15 * s, 25 * s) // outer foot
+		noStroke();
+		fill('#210000')
+		rect(x - (400 * s), y - (10 * s), 800 * s, 10 * s)
 
-		fill(this.farmerColors.face)
-		rect(farmer.xPos - (14 * s), farmer.yPos - (50 * s), 28 * s, 20 * s) // head
-		fill(this.farmerColors.hatBottom)
-		rect(farmer.xPos - (32 * s), farmer.yPos - (59 * s), 60 * s, 9 * s) // hat brim
-		fill(this.farmerColors.hatTop)
-		rect(farmer.xPos - (14 * s), farmer.yPos - (70 * s), 28 * s, 11 * s) // hat top
 
-		fill(this.farmerColors.gunBottom)
-		rect(farmer.xPos - (14 * s), farmer.yPos - (7 * s), 16 * s, 10 * s) // gun handle
-		fill(this.farmerColors.gunTop)
-		rect(farmer.xPos - (30 * s), farmer.yPos - (15 * s), 65 * s, 9 * s) // gun barrel
+		//DRAW STATS
+		textFont(NESfont)
+		//SPACING OF LINES
+		fromTop = (gameOver.distFromEdgeY + resizeCanvasData.currentHeight / 10)
+		fromBottom = (resizeCanvasData.currentHeight)
+		lineSpacing = abs(fromTop - fromBottom) / 8
 
-		if(this.familyData[0].chasing == true)
-		{
-			if(farmer.xPos < resizeCanvasData.currentWidth / 6)
-			{
-				farmer.xPos += 3;
-				this.bullet.xPos = farmer.xPos, 
-				this.bullet.yPos = farmer.yPos - 10, 
-				this.bullet.scale = farmer.size
-			}
-			else 
-			{
-				fill(farmers.farmerColors.bulletColor)
-				this.bullet.xPos += 5
-				ellipse(this.bullet.xPos, this.bullet.yPos, 12 * this.bullet.scale, 12 * this.bullet.scale) // bullet round
-				rect(this.bullet.xPos - 13, this.bullet.yPos - (6 * this.bullet.scale), 12 * this.bullet.scale, 12 * this.bullet.scale) // bullet rect 
-			}
-		}
+		fill(255);
+		stroke(230);
+		strokeWeight(lineSpacing / 10)
+		
+		noStroke();
+		fill(255);
+
+		//GAME OVER text
+		gameOverTextSize = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 35
+		textSize(gameOverTextSize)
+		textAlign(CENTER);
+		text('Congratulations! You won!', resizeCanvasData.currentWidth/2, fromTop )
+
+		statsTextSize = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 60
+		textSize(statsTextSize)
+
+		//LEFT ALIGNED TEXT
+		textAlign(LEFT);
+		distFromLeft = gameOver.distFromEdgeX + 20
+		text('SCORE: ' + (round((statsBoard.score / statsBoard.totalScore) * 100))+ "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text('Carrots Collected', distFromLeft, fromTop + lineSpacing * 3 - (statsTextSize / 2))
+		text('Farmers Killed', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
+		text('Fox Caves Collected', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text('Hearts Left', distFromLeft, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text('Family Collected', distFromLeft, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+
+		//RIGHT ALIGNED TEXT
+		textAlign(RIGHT);
+		distFromRight = resizeCanvasData.currentWidth - gameOver.distFromEdgeX - 20
+		text(statsBoard.score+"/"+statsBoard.totalScore, distFromRight, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text(statsBoard.carrots.totalCollected+'/'+statsBoard.carrots.total, distFromRight, fromTop + lineSpacing * 3 - (statsTextSize / 2))
+		text(statsBoard.farmers.totalKilled+'/'+statsBoard.farmers.total, distFromRight, fromTop + lineSpacing * 4 - (statsTextSize / 2))
+		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
+		text(currentLevel+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+
+
 	}
 
 }
@@ -828,7 +840,7 @@ gameOver =
 		//LEFT ALIGNED TEXT
 		textAlign(LEFT);
 		distFromLeft = this.distFromEdgeX + 20
-		text('SCORE: ' + (round(statsBoard.totalScore / statsBoard.score)) + "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text('SCORE: ' + (round((statsBoard.score / statsBoard.totalScore) * 100))+ "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
 		text('Carrots Collected', distFromLeft, fromTop + lineSpacing * 3 - (statsTextSize / 2))
 		text('Farmers Killed', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
 		text('Fox Caves Collected', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
@@ -1069,15 +1081,15 @@ foxes =
 			{
 				if(currentCave.dropPowerupType == "size")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "size", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.2, type: "size", fromCave: true, fromFarmer: false}])
 				}
 				else if(currentCave.dropPowerupType == "speed")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.2, type: "speed", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.2, type: "speed", fromCave: true, fromFarmer: false}])
 				}
 				else if(currentCave.dropPowerupType == "flower")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (110 * s), size: 0.25, type: "flower", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.25, type: "flower", fromCave: true, fromFarmer: false}])
 				}
 				currentCave.droppedPowerup = true
 			}
@@ -1419,22 +1431,23 @@ foxes =
 
 		s = this.foxSize
 
-		jumpedOnY = currentFox.yPos - (75 * s)
+		jumpedOnY = currentFox.yPos - (35 * s)
 
 		if(currentFox.direction == "left")
 		{
-			jumpedOnXRight= currentFox.xPos + (65 * s)
-			jumpedOnXLeft = currentFox.xPos - (105 * s)
+			jumpedOnXRight= currentFox.xPos + (25 * s)
+			jumpedOnXLeft = currentFox.xPos - (50 * s)
 		}
 		else if(currentFox.direction == "right")
 		{
-			jumpedOnXRight= currentFox.xPos + (85 * s)
-			jumpedOnXLeft = currentFox.xPos - (78 * s)
+			jumpedOnXRight= currentFox.xPos + (35 * s)
+			jumpedOnXLeft = currentFox.xPos - (40 * s)
 		}
 		else if(currentFox.direction == "front")
 		{
-			jumpedOnXRight= currentFox.xPos + (40 * s)
-			jumpedOnXLeft = currentFox.xPos - (40 * s)
+			jumpedOnY += 10 * s
+			jumpedOnXRight= currentFox.xPos + (5 * s)
+			jumpedOnXLeft = currentFox.xPos - (5 * s)
 		}
 
 		jumpedOnXMiddle = (jumpedOnXRight + jumpedOnXLeft) * 0.5
@@ -2147,7 +2160,7 @@ levels =
 		heightPosBottom: null,
 		scrollPosLeft: null,
 		scrollPosRight: null,
-		skyColor: ['#D3D3D3'],
+		skyColor: [208,227,204],
 		//bird data
 		birdSettings: {startingLeft: -100, startingRight: resizeCanvasData.currentWidth + 100, frequency: 200, clusterSpeed: 3, flapSpeed: 3, xRandom: 200, yRandom: 200, numOfBirds: 20, scale: 0.2},
 		birdClustersArray: [{yPos: 0}, {yPos: -500}],
@@ -2194,12 +2207,12 @@ levels =
 			{xPos: 5500, yPos: 60, size: 0.3},
 			{xPos: 7250, yPos: 200, size: 0.3}],
 		//ground data
-		grassLight: ['#BBC622'],
-		grassDark: ['#9CB381'],
-		dirtLight: ['#906B4F'],
-		dirtDark: ['#684D3A'],
-		bedRockLight: ['#A5A5A5'],
-		bedRockDark: ['#494A4A'],
+		grassLight: [243,180,139],
+		grassDark: [223,145,94],
+		dirtLight: [208,183,172],
+		dirtDark: [84,60,44],
+		bedRockLight: [165,136,122],
+		bedRockDark: [67,53,32],
 		groundPositionsArray:
 			[[200, 2000], 
 			[2100, 3000], 
@@ -2214,7 +2227,7 @@ levels =
 			{xPos: 3900, canyonWidth: 100},
 			{xPos: 4800, canyonWidth: 350},
 			{xPos: 7000, canyonWidth: 100}],
-		canyonColor: ['#D3D3D3'],
+		canyonColor: [208,227,204],
 		//platform data
 		platformPositionsArray:
 			[{yPos: 250, platformStart: 1000, platformEnd: 1250},
@@ -2247,7 +2260,7 @@ levels =
 			{xPos: 4250, yPos: 432, scale: 1.2},
 			{xPos: 7720, yPos: 432, scale: 0.8}],
 		//tree data
-		leavesColor: ['#1A4321'],
+		leavesColor: [244, 225, 172],
 		trunkColor: [120, 100, 40],
 		treePositionsArray:
 			[{xPos: 1120, yPos: 250, scale: 0.7},
@@ -2255,14 +2268,14 @@ levels =
 			{xPos: 3500, yPos: 250, scale: 0.4},
 			{xPos: 6200, yPos: 432, scale: 0.4}],
 		//farmers data
-		hatTopColor: ['#B18B55'],
-		hatBottomColor: ['#714D1D'],
-		gunTopColor: ['#3B4647'],
-		gunBottomColor: ['#C2441B'],
-		innerFootColor: ['#C6AA80'],
-		outerFootColor: ['#D8C8A3'],
-		bodyColor: ['#24452D'],
-		faceColor: ['#D9A765'],
+		hatTopColor: [216, 120, 70],
+		hatBottomColor: [159, 77, 40],
+		gunTopColor: [128],
+		gunBottomColor: [96],
+		innerFootColor: [145,131,124],
+		outerFootColor: [212,203,185],
+		bodyColor: [100, 28, 14],
+		faceColor: [191, 153, 115],
 		bulletColor: [69],
 		farmerPositionsArray:
 			[{xPos: 5350, yPos: 210, scale: 1, firingFrequency: 120, firingSpeed: 6, maxBulletDistLeft: 225, maxBulletDistRight: 300, maxBulletDistIsX: false, dropPowerupType: ""},
@@ -2279,9 +2292,9 @@ levels =
 	//level 2
 	{
 		//level data
-		levelText: "Level 2: Rescue your son Arvin",
-		levelTextWidth: 560,
-		levelChildPosition: [915, 28, 0.22],
+		levelText: "Level 2: Rescue your son Aurelio",
+		levelTextWidth: 580,
+		levelChildPosition: [935, 28, 0.22],
 		//vital char data 
 		characterYStartHeightPos: 0,
 		characterXStartScrollPos: 0,
@@ -2524,10 +2537,10 @@ levels =
 			{xPos: 1000, yPos: -138, direction: "right", speed: [2, 3], maxLeft: 0, maxRight: 1210},
 			{xPos: 2210, yPos: -223, direction: "right", speed: [5, 6], maxLeft: 1210, maxRight: 0}],
 		//mountain data
-		sideMountainsColor: ['#D4B479'],
-		middleMountainColor: ['#F2D9A6'],
-		riverColor: ['#F2D9A6'],
-		snowCapColor: ['#F2D9A6'],
+		sideMountainsColor: [188,148,90],
+		middleMountainColor: [238,206,160],
+		riverColor: [238,206,160],
+		snowCapColor: [238,206,160],
 		mountainPositionsArray:
 			[{xPos: 1700, yPos: 432, scale: 4.1},
 			{xPos: 12700, yPos: 432, scale: 3.3}],
@@ -2711,7 +2724,7 @@ powerups =
 		if(this.superSizeData.superSized)
 		{
 			if(!purpleCarrotCollectedSound.isPlaying()){purpleCarrotCollectedSound.loop()}
-			if(gameLoopSound.isPlaying()){gameLoopSound.stop()}
+			if(gameLoopSound.isPlaying()){gameLoopSound.pause()}
 		}
 		else
 		{
@@ -3329,7 +3342,7 @@ child =
 			this.isFound = true;
 			statsBoard.addPoints(statsBoard.pointQuantities.child)
 			collectedAnimations.addAnimation(this.xPos, this.getFeetPos(), color(196, 58, 30), color(150, 24, 0), {x: this.xPos})
-		}
+		} 
 
 	}
 }
@@ -3520,11 +3533,14 @@ statsBoard =
 
 		//calculate cave powerup totals
 		caveTotalPowerupScore = 0
+		numberOfFoxes = 0 
+		numberOfFoxLives = 0 
 
 		for(i = 0; i < levels.length; i++)
 		{
 			for(caveIdx = 0; caveIdx < levels[i].cavesData.length; caveIdx++)
 			{
+				//POWERUP SCORES
 				if(levels[i].cavesData[caveIdx].dropPowerupType == "speed")
 				{
 					caveTotalPowerupScore += this.pointQuantities.speed
@@ -3537,8 +3553,13 @@ statsBoard =
 				{
 					caveTotalPowerupScore += this.pointQuantities.flower
 				}
+
+				//FOXES SCORE
+				numberOfFoxes += levels[i].cavesData[caveIdx].numOfFoxes
 			}
 		}
+
+		numberOfFoxLives = numberOfFoxes
 
 		childrenTotal = levels.length - 1; //one less than all levels (last level finds wife)
 
@@ -3547,12 +3568,12 @@ statsBoard =
 		this.carrots.total = carrotTotal
 		this.caves.total = cavesTotal
 
-		this.children.total = childrenTotal
-
 		this.totalScore = (livesTotal * this.pointQuantities.life) + 
 						(carrotTotal * this.pointQuantities.carrot) + 
 						(farmerTotal * this.pointQuantities.farmer) + 
-						(childrenTotal * this.pointQuantities.child)
+						(childrenTotal * this.pointQuantities.child) +
+						(numberOfFoxes * this.pointQuantities.foxKilled) +
+						(numberOfFoxLives * this.pointQuantities.foxHit)
 		
 		this.totalScore += caveTotalPowerupScore
 
@@ -3568,7 +3589,7 @@ statsBoard =
 		else if(item == "farmer")
 		{
 			this.farmers.thisLevel += 1
-			this.farmers.totalCollected += 1
+			this.farmers.totalKilled += 1
 		}
 		else if(item == "life")
 		{
@@ -3589,6 +3610,7 @@ statsBoard =
 		this.caves.totalCollected = 0;
 		this.farmers.totalKilled = 0;
 		this.score = 0;
+		this.children.current = 0;
 	},
 
 	refreshCurrentLevel: function ()
@@ -3601,31 +3623,7 @@ statsBoard =
 		this.carrots.thisLevel = 0;
 		this.caves.thisLevel = 0;
 		this.farmers.thisLevel = 0;
-		this.lives.thisLevel = 0;
-
-		this.children.current = 0;
-		this.wife.current = 0;
-
-		//foxes score is dynamic, so it's added each level
-		totalFoxes = 0;
-		totalFoxLives = 0;
-		for(caveIdx = 0; caveIdx < foxes.caves.length; caveIdx++)
-		{
-			totalFoxes += foxes.caves[caveIdx].numOfFoxes
-			
-			totalLivesInCave = 0;
-			for(foxIdx = 0; foxIdx < foxes.caves[caveIdx].caveFoxesArray.length; foxIdx++)
-			{
-				totalLivesInCave += foxes.caves[caveIdx].caveFoxesArray[foxIdx].lives
-			}
-
-			totalFoxLives += totalLivesInCave
-		}
-
-		this.foxes.pointsPossible += (totalFoxes * this.pointQuantities.foxKilled)
-		this.foxes.pointsPossible += (totalFoxLives * this.pointQuantities.foxHit)
-									
-
+		this.lives.thisLevel = 0;									
 	},
 
 	handlePlayerDeath: function ()
@@ -3665,7 +3663,7 @@ statsBoard =
 		carrot: 15,
 		life: 75,
 		child: 100,
-		farmer: 50,
+		farmer: 100,
 		death: 100,
 		foxHit: 10,
 		foxKilled: 50,
@@ -3707,21 +3705,10 @@ statsBoard =
 		totalCollected: 0
 	},
 
-	foxes:
-	{
-		pointsPossible: null,
-	},
-
 	children:
 	{
 		current: 0,
 		total: null
-	},
-
-	wife:
-	{
-		current: 0,
-		total: 1,
 	},
 
 	carrotData:
@@ -3879,13 +3866,20 @@ statsBoard =
 				this.itemCollected("child")
 
 				this.childrenToStatsArray = [];
-				currentLevel += 1;
-				if(levels[currentLevel].yIdxUpdated == false)
+				if(currentLevel != 2)
 				{
-					updateYObjStart()
-					levels[currentLevel].yIdxUpdated = true
+					currentLevel += 1;
+					if(levels[currentLevel].yIdxUpdated == false)
+					{
+						updateYObjStart()
+						levels[currentLevel].yIdxUpdated = true
+					}
+					startGame();
 				}
-				startGame();
+				else
+				{
+					introOutro.isOutro = true;
+				}
 			}
 		}
 	},
@@ -4138,7 +4132,7 @@ canyons =
 	{
 		for(i = 0; i < this.canyonsArray.length; i++)
 		{
-			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()) && rabbitCharacter.isDead == false && statsBoard.deathHandled == false)
+			if(this.canyonsArray[i].checkCollision(rabbitCharacter.realWorldPos, rabbitCharacter.getFeetPos()) && rabbitCharacter.isDead == false && statsBoard.deathHandled == false && rabbitCharacter.jumpingData.currentlyJumping == false)
 			{
 				playSound("gameOver")
 				rabbitCharacter.isDead = true;
@@ -5615,6 +5609,10 @@ farmers =
 				playSound("jumpedOnEnemy")
 				farmer.isDead = true
 				statsBoard.addPoints(statsBoard.pointQuantities.farmer)
+				if(farmer.dropPowerupType == "")
+				{
+					statsBoard.itemCollected("farmer")
+				}
 			}
 
 			//draw farmer dead animation and control removing farmer from the array
@@ -6235,12 +6233,12 @@ function keyPressed()
 		{
 			introOutro.startKidnappers()
 		}
-		if(!introSongSound.isPlaying()){introSongSound.play()}
+		if(!introSongSound.isPlaying()){introSongSound.loop()}
 
 		introOutro.isIntro.starting = true;
 	}
 
-	if(introOutro.isIntro.display || introOutro.isOutro.display) {return}
+	if(introOutro.isIntro.display || introOutro.isOutro) {return}
 
 	if(editingMode)
 	{
@@ -6400,10 +6398,12 @@ function mousePressed()
 	{
 		currentLevel = 0;
 		statsBoard.children.current = 0;
-		child.drawChildBool = true,
-		child.isFound =  false,
 		startGame()
 		statsBoard.refreshGameStats()
+	}
+	if(gameOver.onShareButton(mouseX, mouseY) && gameOver.drawMessageBool == true)
+	{
+		saveCanvas('myScore', 'png')
 	}
 }
 
