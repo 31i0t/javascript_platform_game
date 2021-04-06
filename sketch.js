@@ -805,7 +805,7 @@ collisionBoundaryData =
 	bullet: 15,
 	bulletSuperSize: 30,
 	fox: 20,
-	foxSuperSize:  40
+	foxSuperSize:  50
 }
 
 //--------------------CANVAS DIMENSIONS OBJECT (HANDLES RESIZING)--------------------//
