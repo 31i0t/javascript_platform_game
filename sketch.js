@@ -1462,7 +1462,7 @@ foxes =
 				}
 				else if(currentFox.isDead == true)
 				{
-					currentFox.yPos += currentCave.foxSpeed * 2
+					currentFox.yPos += currentCave.foxSpeed * 5
 					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentCave.caveFoxesArray.splice(foxIdx, 1)
@@ -5675,7 +5675,7 @@ farmers =
 			//draw farmer dead animation and control removing farmer from the array
 			if(farmer.isDead)
 			{
-				farmer.yPos += 8;
+				farmer.yPos += 16;
 				if(farmer.yPos > resizeCanvasData.currentHeight + 100)
 				{
 					this.farmersArray.splice(farmerIdx, 1)
