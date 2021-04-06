@@ -1449,7 +1449,7 @@ foxes =
 				//code to move foxes
 				if(currentFox.isFalling && currentFox.isDead == false)
 				{
-					currentFox.yPos += currentCave.foxSpeed
+					currentFox.yPos += currentCave.foxSpeed * 2.5
 					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentFox.isOutside = false;
