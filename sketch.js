@@ -326,7 +326,7 @@ introOutro =
 		this.updateFamilyX()
 		this.updateFamilyY()
 
-		if(this.familyData[0].xPos > resizeCanvasData.currentWidth + 100)
+		if(this.familyData[0].xPos > resizeCanvasData.currentWidth + 100 && this.isOutro == false)
 		{
 			this.isIntro.display = false;
 			if(this.aTagCreated == true){a.remove()}
@@ -792,6 +792,7 @@ introOutro =
 		a.style('color', 'white')
 		a.style('text-decoration', 'none')
 		a.style('font-family', "NESfont")
+
 		this.aTagCreated = true
 	}
 
@@ -800,10 +801,10 @@ introOutro =
 //--------------------HANDLES COLLISION BOUNDARIES--------------------//
 collisionBoundaryData = 
 {
-	friendlyObject: 35,
-	friendlyObjectSuperSize: 70,
-	bullet: 15,
-	bulletSuperSize: 30,
+	friendlyObject: 40,
+	friendlyObjectSuperSize: 80,
+	bullet: 25,
+	bulletSuperSize: 50,
 	fox: 20,
 	foxSuperSize:  50
 }
