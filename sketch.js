@@ -50,11 +50,6 @@ function setup()
 function startGame()
 {
 	level = levels[currentLevel]
-
-	scrollPos = level.characterXStartScrollPos;
-	heightPos = level.characterYStartHeightPos;
-	
-	respawn()
 	
 	carrots.carrotArray = [];
 	lives.heartsArray = [];
@@ -66,6 +61,8 @@ function startGame()
 	birds.clusters = [];
 	child.drawChildBool = true;
 	child.isFound =  false;
+
+	respawn()
 
 	frameRate(60)
 
@@ -136,8 +133,6 @@ function startGame()
 
 function draw()
 {
-	console.log(heightPos)
-
 	introOutro.drawIntro()
 	introOutro.drawOutro()
 
@@ -156,6 +151,7 @@ function draw()
 	pop();
 
 	push();
+	translate(0, resizeCanvasData.yCanvasTranslate)
 	translate(0, heightPos)
 	birds.drawBirdClusters()
 	pop();
@@ -178,9 +174,10 @@ function draw()
 	pop();
 
 	rabbitCharacter.drawRabbit()
-
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
+
 	animatePointsCollected.animateActiveAnimations()
+
 	powerups.updatePowerups()
 
 	//draw collectables in front of character
@@ -1477,7 +1474,7 @@ foxes =
 						currentFox.lives -= 1;
 					}
 
-					if(currentFox.lives <= 0)
+					if(currentFox.lives <= 0 && currentFox.isDead == false)
 					{
 						pointsToAdd += statsBoard.pointQuantities.foxKilled
 						currentFox.movingData.platformData.onPlatform = false
@@ -1559,7 +1556,7 @@ foxes =
 				if(currentFox.isFalling && currentFox.isDead == false)
 				{
 					currentFox.yPos += currentCave.foxSpeed * 1.5
-					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
+					if((currentFox.yPos + resizeCanvasData.yCanvasTranslate + heightPos) > resizeCanvasData.currentHeight + 200)
 					{
 						currentFox.isOutside = false;
 						currentFox.xPos = currentCave.xPos
@@ -1572,7 +1569,7 @@ foxes =
 				else if(currentFox.isDead == true)
 				{
 					currentFox.yPos += 16
-					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
+					if((currentFox.yPos + resizeCanvasData.yCanvasTranslate + heightPos) > resizeCanvasData.currentHeight + 200)
 					{
 						currentCave.caveFoxesArray.splice(foxIdx, 1)
 					}
@@ -2189,8 +2186,8 @@ foxes =
 					}
 					pop();
 					pop();
-				}
 			}
+		}
 	}
 }
 
@@ -3399,11 +3396,11 @@ child =
 				childBoardY = (levels[currentLevel].levelChildPosition[1] * statsBoard.boardScale.scale) + statsBoard.boardScale.y
 				statsBoard.childrenToStatsArray.push({
 							xPos: this.xPos + scrollPos, 
-							yPos: this.yPos + heightPos, 
+							yPos: this.yPos + heightPos + resizeCanvasData.yCanvasTranslate, 
 							size: this.size, 
 							lifeSpan: duration,
 							xUpdate: abs((this.xPos + scrollPos) - (childBoardX)) / duration, 
-							yUpdate: abs((this.yPos + heightPos) - (childBoardY)) / duration, 
+							yUpdate: abs((this.yPos + heightPos + resizeCanvasData.yCanvasTranslate) - (childBoardY)) / duration, 
 							sizeUpdate: ((childBoardSize) - this.size) / duration})
 				
 				this.drawChildBool = false;
@@ -3802,11 +3799,11 @@ statsBoard =
 				statsBoard.removePoints(statsBoard.pointQuantities.death)
 				this.deathHandled = true
 			}
-			if(rabbitCharacter.getCenterPos() > resizeCanvasData.currentHeight && this.lives.current <= 0)
+			if((rabbitCharacter.getCenterPos() + resizeCanvasData.yCanvasTranslate) > (resizeCanvasData.currentHeight) && this.lives.current <= 0)
 			{
 				gameOver.drawMessageBool = true;
 			}
-			else if(rabbitCharacter.getCenterPos() > resizeCanvasData.currentHeight)
+			else if((rabbitCharacter.getCenterPos() + resizeCanvasData.yCanvasTranslate) > (resizeCanvasData.currentHeight))
 			{
 				respawn()
 			}
@@ -4897,7 +4894,7 @@ drawTerrain =
 			{
 				generatedTerrain.push({color: lightColor, 
 									x: currentX + random(-xRandom, xRandom), 
-									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, height), 
+									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, Infinity), 
 									width: random(widthRandom[0], widthRandom[1]), 
 									height: random(heightRandom[0], heightRandom[1])})
 			}
@@ -4905,7 +4902,7 @@ drawTerrain =
 			{
 				generatedTerrain.push({color: darkColor, 
 									x: currentX + random(-xRandom, xRandom), 
-									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, height), 
+									y: constrain(yPos + random(-yRandom, yRandom), maxHeight, Infinity), 
 									width: random(widthRandom[0], widthRandom[1]),
 									height: random(heightRandom[0], heightRandom[1])})
 			}
@@ -5134,7 +5131,7 @@ rabbitCharacter =
 
 	getFeetPos: function ()
 	{
-		return this.yPos - (10 * this.size)
+		return this.yPos - (5 * this.size)
 	},
 
 	getCenterPos: function ()
@@ -5785,7 +5782,7 @@ farmers =
 			if(farmer.isDead)
 			{
 				farmer.yPos += 16;
-				if(farmer.yPos > resizeCanvasData.currentHeight + 100)
+				if(farmer.yPos + resizeCanvasData.yCanvasTranslate + heightPos > resizeCanvasData.currentHeight + 100)
 				{
 					this.farmersArray.splice(farmerIdx, 1)
 				}
@@ -6187,7 +6184,6 @@ birds =
 
 			else
 			{
-				//UPDATE TO WINDOW XPOS!!
 				currentCluster = {xPos: this.settings.startingRight, 
 								yPos: clusterY, 
 								direction: "left", 
