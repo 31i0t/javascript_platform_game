@@ -136,6 +136,8 @@ function startGame()
 
 function draw()
 {
+	console.log(heightPos)
+
 	introOutro.drawIntro()
 	introOutro.drawOutro()
 
@@ -205,11 +207,7 @@ function draw()
 
 	if(gameOver.drawMessageBool){gameOver.drawMessage()}
 
-	powerups.superSizeSound()
-
-	console.log(rabbitCharacter.platformData.onPlatform)
-
-	
+	powerups.superSizeSound()	
 }
 
 //--------------------HANDLES RESPAWNING (NOT DEATH)--------------------//
@@ -3615,8 +3613,8 @@ lives =
 				{
 					h = this.heartsArray[i]
 					duration = 50 // controls duration in # of frames of collectables going to stats board
-					statsBoard.heartsToStatsArray.push({xPos: h.x + scrollPos, yPos: h.y + heightPos, size: h.size, lifeSpan: duration,
-						xUpdate: abs(h.x - (statsBoard.heartData.xPos - scrollPos)) / duration, yUpdate: abs((h.y + heightPos) - statsBoard.heartData.yPos) / duration, sizeUpdate: (statsBoard.heartData.size - h.size) / duration})
+					statsBoard.heartsToStatsArray.push({xPos: h.x + scrollPos, yPos: h.y + heightPos + resizeCanvasData.yCanvasTranslate, size: h.size, lifeSpan: duration,
+						xUpdate: abs(h.x - (statsBoard.heartData.xPos - scrollPos)) / duration, yUpdate: abs((h.y + heightPos + resizeCanvasData.yCanvasTranslate) - statsBoard.heartData.yPos) / duration, sizeUpdate: (statsBoard.heartData.size - h.size) / duration})
 					this.heartsArray.splice(i, 1);
 					continue;
 				}
@@ -4812,11 +4810,11 @@ carrots =
 					c = this.carrotArray[i]
 					duration = 50 // controls duration in # of frames of collectables going to stats board
 					statsBoard.carrotsToStatsArray.push({xPos: c.x + scrollPos, 
-														yPos: c.y + heightPos, 
+														yPos: c.y + heightPos + resizeCanvasData.yCanvasTranslate, 
 														size: c.size, 
 														lifeSpan: duration,
 														xUpdate: abs(c.x - (statsBoard.carrotData.xPos - scrollPos)) / duration, 
-														yUpdate: abs((c.y + heightPos) - statsBoard.carrotData.yPos) / duration, 
+														yUpdate: abs((c.y + heightPos + resizeCanvasData.yCanvasTranslate) - statsBoard.carrotData.yPos) / duration, 
 														sizeUpdate: (statsBoard.carrotData.size - c.size) / duration
 														})
 					this.carrotArray.splice(i, 1);
