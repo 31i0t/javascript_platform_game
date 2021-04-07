@@ -773,7 +773,7 @@ introOutro =
 		//SPACING OF LINES
 		fromTop = (gameOver.distFromEdgeY + resizeCanvasData.currentHeight / 10)
 		fromBottom = (resizeCanvasData.currentHeight)
-		lineSpacing = abs(fromTop - fromBottom) / 9
+		lineSpacing = abs(fromTop - fromBottom) / 8
 
 		fill(255);
 		stroke(230);
@@ -786,7 +786,7 @@ introOutro =
 		gameOverTextSize = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 35
 		textSize(gameOverTextSize)
 		textAlign(CENTER);
-		text('Congratulations! You won!', resizeCanvasData.currentWidth/2, fromTop )
+		text('Congratulations! You won!', resizeCanvasData.currentWidth/2, fromTop)
 
 		statsTextSize = (resizeCanvasData.currentWidth + resizeCanvasData.currentHeight) / 60
 		textSize(statsTextSize)
@@ -794,29 +794,29 @@ introOutro =
 		//LEFT ALIGNED TEXT
 		textAlign(LEFT);
 		distFromLeft = gameOver.distFromEdgeX + 20
-		text('SCORE: ' + (round((statsBoard.score / statsBoard.totalScore) * 100))+ "%", distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
-		text('Carrots Collected', distFromLeft, fromTop + lineSpacing * 3 - (statsTextSize / 2))
-		text('Farmers Killed', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
-		text('Fox Caves Collected', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
-		text('Hearts Left', distFromLeft, fromTop + lineSpacing * 6 - (statsTextSize / 2))
-		text('Family Collected', distFromLeft, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+		text('SCORE: ' + (round((statsBoard.score / statsBoard.totalScore) * 100))+ "%", distFromLeft, fromTop + lineSpacing - (statsTextSize / 2))
+		text('Carrots Collected', distFromLeft, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text('Farmers Killed', distFromLeft, fromTop + lineSpacing * 3 - (statsTextSize / 2))
+		text('Fox Caves Collected', distFromLeft, fromTop + lineSpacing * 4 - (statsTextSize / 2))
+		text('Hearts Left', distFromLeft, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text('Family Collected', distFromLeft, fromTop + lineSpacing * 6 - (statsTextSize / 2))
 
 		//RIGHT ALIGNED TEXT
 		textAlign(RIGHT);
 		distFromRight = resizeCanvasData.currentWidth - gameOver.distFromEdgeX - 20
-		text(statsBoard.score+"/"+statsBoard.totalScore, distFromRight, fromTop + lineSpacing * 2 - (statsTextSize / 2))
-		text(statsBoard.carrots.totalCollected+'/'+statsBoard.carrots.total, distFromRight, fromTop + lineSpacing * 3 - (statsTextSize / 2))
-		text(statsBoard.farmers.totalKilled+'/'+statsBoard.farmers.total, distFromRight, fromTop + lineSpacing * 4 - (statsTextSize / 2))
-		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
-		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
-		text((currentLevel + 1)+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+		text(statsBoard.score+"/"+statsBoard.totalScore, distFromRight, fromTop + lineSpacing - (statsTextSize / 2))
+		text(statsBoard.carrots.totalCollected+'/'+statsBoard.carrots.total, distFromRight, fromTop + lineSpacing * 2 - (statsTextSize / 2))
+		text(statsBoard.farmers.totalKilled+'/'+statsBoard.farmers.total, distFromRight, fromTop + lineSpacing * 3 - (statsTextSize / 2))
+		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 4 - (statsTextSize / 2))
+		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
+		text((currentLevel + 1)+'/'+levels.length, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
 
 		//SHARE BUTTON
 		rectDimensions = lineSpacing
 		this.shareDimensions = {xLeft: distFromRight - rectDimensions, 
 								xRight: distFromRight - rectDimensions + rectDimensions, 
-								yTop: fromTop + lineSpacing * 6.9, 
-								yBottom: fromTop + lineSpacing * 6.9 + rectDimensions}
+								yTop: fromTop + lineSpacing * 5.9, 
+								yBottom: fromTop + lineSpacing * 5.9 + rectDimensions}
 		fillColor = 230
 		if(this.onShareButton(mouseX, mouseY))
 		{
@@ -824,11 +824,11 @@ introOutro =
 			cursor('pointer')
 		}
 		fill(fillColor);
-		rect(distFromRight - rectDimensions, fromTop + lineSpacing * 6.9, rectDimensions, rectDimensions, rectDimensions / 15)
+		rect(distFromRight - rectDimensions, fromTop + lineSpacing * 5.9, rectDimensions, rectDimensions, rectDimensions / 15)
 		
 		//SHARE ICON
 		x = distFromRight - rectDimensions + (rectDimensions / 2)
-		y = fromTop + lineSpacing * 6.95 + (lineSpacing /2)
+		y = fromTop + lineSpacing * 5.95 + (lineSpacing /2)
 		s = statsTextSize / 150
 
 		push();
@@ -868,8 +868,8 @@ introOutro =
 		rectWidth = resizeCanvasData.currentWidth / 5
 		this.restartDimensions = {xLeft: resizeCanvasData.currentWidth/2 - (rectWidth / 2), 
 								xRight: resizeCanvasData.currentWidth/2 - (rectWidth / 2) + rectWidth, 
-								yTop: fromTop + lineSpacing * 6.9, 
-								yBottom: fromTop + lineSpacing * 6.9 + lineSpacing}
+								yTop: fromTop + lineSpacing * 5.9, 
+								yBottom: fromTop + lineSpacing * 5.9 + lineSpacing}
 		fillColor = 100
 		if(this.onRestartButton(mouseX, mouseY))
 		{
@@ -878,11 +878,11 @@ introOutro =
 		}
 
 		fill(fillColor);
-		rect(width/2 - (rectWidth / 2), fromTop + lineSpacing * 6.9, rectWidth, lineSpacing, rectWidth / 30)
+		rect(width/2 - (rectWidth / 2), fromTop + lineSpacing * 5.9, rectWidth, lineSpacing, rectWidth / 30)
 		
 		textAlign(CENTER)
 		fill(255, 255, 255)
-		text('RESTART', resizeCanvasData.currentWidth/2, fromTop + lineSpacing * 7.5)
+		text('RESTART', resizeCanvasData.currentWidth/2, fromTop + lineSpacing * 6.5)
 
 		if(this.onRestartButton(mouseX, mouseY) || this.onShareButton(mouseX, mouseY))
 		{
