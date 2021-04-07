@@ -82,9 +82,6 @@ function startGame()
 
 	statsBoard.refreshCurrentLevel()
 
-	//update right starting pos of birds
-	level.birdSettings.startingRight = resizeCanvasData.currentWidth + 100
-
 	birds.birdColorData = level.birdColorData
 	birds.settings = level.birdSettings
 	birds.generateBirdClusters(level.birdClustersArray)
@@ -179,6 +176,7 @@ function draw()
 	pop();
 
 	rabbitCharacter.drawRabbit()
+
 	rabbitCharacter.realWorldPos = rabbitCharacter.xPos - scrollPos;
 	animatePointsCollected.animateActiveAnimations()
 	powerups.updatePowerups()
@@ -227,9 +225,15 @@ function respawn()
 
 
 	rabbitCharacter.realWorldPos = levels[currentLevel].characterXStart
+	
 	rabbitCharacter.platformData.onPlatform = false;
+	rabbitCharacter.platformData.currentPlatformData = null;
+
 	rabbitCharacter.ridingCloudData.onCloud = false;
+	rabbitCharacter.ridingCloudData.cloudRiding = null;
+
 	rabbitCharacter.jumpingData.jumpingDuration = rabbitCharacter.jumpingData.resetJumpDuration
+	
 	rabbitCharacter.onFloor = true
 
 	//disable powerups
@@ -348,7 +352,7 @@ introOutro =
 								{xPos: this.xPos + (40 * this.size), yPos: this.yPos - (96 * this.size), size: 1.4 * this.size, captured: false},
 								{xPos: this.xPos - (150 * this.size), yPos: this.yPos - (40 * this.size), size: 0.5 * this.size, captured: false},
 								{xPos: this.xPos + (140 * this.size), yPos: this.yPos - (40 * this.size), size: 0.5 * this.size, captured: false}]
-
+			
 			this.familyDataSet = true;
 		}
 
@@ -1138,15 +1142,15 @@ foxes =
 			{
 				if(currentCave.dropPowerupType == "size")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.2, type: "size", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (108 * s), size: 0.2, type: "size", fromCave: true, fromFarmer: false}])
 				}
 				else if(currentCave.dropPowerupType == "speed")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.2, type: "speed", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (108 * s), size: 0.2, type: "speed", fromCave: true, fromFarmer: false}])
 				}
 				else if(currentCave.dropPowerupType == "flower")
 				{
-					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (100 * s), size: 0.25, type: "flower", fromCave: true, fromFarmer: false}])
+					powerups.addPowerups([{xPos: currentCave.xPos, yPos: currentCave.yPos - (108 * s), size: 0.25, type: "flower", fromCave: true, fromFarmer: false}])
 				}
 				currentCave.droppedPowerup = true
 			}
@@ -1449,7 +1453,7 @@ foxes =
 				//code to move foxes
 				if(currentFox.isFalling && currentFox.isDead == false)
 				{
-					currentFox.yPos += currentCave.foxSpeed * 2.5
+					currentFox.yPos += currentCave.foxSpeed * 1.5
 					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentFox.isOutside = false;
@@ -1462,7 +1466,7 @@ foxes =
 				}
 				else if(currentFox.isDead == true)
 				{
-					currentFox.yPos += currentCave.foxSpeed * 5
+					currentFox.yPos += 16
 					if(currentFox.yPos > resizeCanvasData.currentHeight + 200)
 					{
 						currentCave.caveFoxesArray.splice(foxIdx, 1)
@@ -2226,7 +2230,7 @@ levels =
 		caveColors: {lightStone: [187, 192, 200], darkStone: [101, 115, 126], inside: [33, 14, 0]},
 		foxColors: {darkFurLight: [255, 127, 9], darkFurDark: [206, 44, 0], highlights: [216, 220, 226], outlineColor: [77, 18, 0]},
 		cavesData: [{xPos: 2790, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 1, foxSpeed: 3, foxGap: 1, maxNumOfLives: 1, maxNumberOfFoxesOut: 1, dropPowerupType: "speed"},
-					{xPos: 4680, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 3, foxGap: 150, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "size"},
+					{xPos: 4680, yPos: 432, size: 0.5, direction: "left", numOfFoxes: 3, foxSpeed: 3, foxGap: 150, maxNumOfLives: 1, maxNumberOfFoxesOut: 3, dropPowerupType: "size"},
 					{xPos: 5300, yPos: 432, size: 0.5, direction: "right", numOfFoxes: 2, foxSpeed: 4, foxGap: 100, maxNumOfLives: 1, maxNumberOfFoxesOut: 2, dropPowerupType: "flower"}],
 		//powerup data
 		//powerup format {xPos: 320, yPos: 380, size: 0.25, type: "flower", fromCave: false, fromFarmer: false}
@@ -5025,7 +5029,7 @@ rabbitCharacter =
 
 	getFeetPos: function ()
 	{
-		return this.yPos
+		return this.yPos - (20 * this.size)
 	},
 
 	getCenterPos: function ()
@@ -5687,15 +5691,15 @@ farmers =
 			{
 				if(farmer.dropPowerupType == "size")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.2, type: "size", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 28, size: 0.2, type: "size", fromCave: false, fromFarmer: true}])
 				}
 				else if(farmer.dropPowerupType == "speed")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.2, type: "speed", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 28, size: 0.2, type: "speed", fromCave: false, fromFarmer: true}])
 				}
 				else if(farmer.dropPowerupType == "flower")
 				{
-					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 20, size: 0.25, type: "flower", fromCave: false, fromFarmer: true}])
+					powerups.addPowerups([{xPos: farmer.xPos, yPos: farmer.yPos - 28, size: 0.25, type: "flower", fromCave: false, fromFarmer: true}])
 				}
 				farmer.droppedPowerup = true
 			}
@@ -6092,6 +6096,9 @@ birds =
 
 	drawBirdClusters: function ()
 	{
+		//update bird cluster ending
+		levels[currentLevel].birdSettings.startingRight = resizeCanvasData.currentWidth + 100
+
 		for(clusterIdx = 0; clusterIdx < this.clusters.length; clusterIdx++)
 		{
 			this.drawCluster(this.clusters[clusterIdx])
@@ -6283,8 +6290,8 @@ collectedAnimations =
 
 function keyPressed()
 {
-
-	if(introOutro.isIntro.display)
+	
+	if(introOutro.isIntro.display && frameCount > 5)
 	{
 		if(!introOutro.isIntro.starting)
 		{
@@ -6336,8 +6343,8 @@ function keyPressed()
 		{
 			rabbitCharacter.userInput.direction = "right";
 		}
-		//space bar
-		if (keyCode == 32 && rabbitCharacter.userInput.airCondition == "walking" && rabbitCharacter.isDead == false)
+		//space bar or up arrow
+		if ((keyCode == 32 || keyCode == 38) && rabbitCharacter.userInput.airCondition == "walking" && rabbitCharacter.isDead == false)
 		{
 			playSound("jump")
 			if(rabbitCharacter.ridingCloudData.onCloud || rabbitCharacter.platformData.onPlatform)
