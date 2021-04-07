@@ -207,6 +207,7 @@ function draw()
 
 	powerups.superSizeSound()
 
+	console.log(rabbitCharacter.platformData.onPlatform)
 
 	
 }
@@ -717,6 +718,35 @@ introOutro =
 
 	},
 
+	onButtonColor: ['#091F4E'],
+
+	restartDimensions: {xLeft: null, xRight: null, yTop: null, yBottom: null},
+
+	shareDimensions: {xLeft: null, xRight: null, yTop: null, yBottom: null},
+
+
+	onRestartButton: function (x, y)
+	{
+		xInRange = (x > this.restartDimensions.xLeft) && (x < this.restartDimensions.xRight)
+		yInRange = (y > this.restartDimensions.yTop) && (y < this.restartDimensions.yBottom)
+
+		if(xInRange && yInRange)
+		{
+			return true
+		}
+	},
+
+	onShareButton: function (x, y)
+	{
+		xInRange = (x > this.shareDimensions.xLeft) && (x < this.shareDimensions.xRight)
+		yInRange = (y > this.shareDimensions.yTop) && (y < this.shareDimensions.yBottom)
+
+		if(xInRange && yInRange)
+		{
+			return true
+		}
+	},
+
 	drawOutro: function ()
 	{
 		if(!this.isOutro){return}
@@ -745,7 +775,7 @@ introOutro =
 		//SPACING OF LINES
 		fromTop = (gameOver.distFromEdgeY + resizeCanvasData.currentHeight / 10)
 		fromBottom = (resizeCanvasData.currentHeight)
-		lineSpacing = abs(fromTop - fromBottom) / 8
+		lineSpacing = abs(fromTop - fromBottom) / 9
 
 		fill(255);
 		stroke(230);
@@ -782,6 +812,88 @@ introOutro =
 		text(statsBoard.caves.totalCollected+'/'+statsBoard.caves.total, distFromRight, fromTop + lineSpacing * 5 - (statsTextSize / 2))
 		text(statsBoard.lives.current+'/'+statsBoard.lives.total, distFromRight, fromTop + lineSpacing * 6 - (statsTextSize / 2))
 		text((currentLevel + 1)+'/'+levels.length, distFromRight, fromTop + lineSpacing * 7 - (statsTextSize / 2))
+
+		//SHARE BUTTON
+		rectDimensions = lineSpacing
+		this.shareDimensions = {xLeft: distFromRight - rectDimensions, 
+								xRight: distFromRight - rectDimensions + rectDimensions, 
+								yTop: fromTop + lineSpacing * 6.9, 
+								yBottom: fromTop + lineSpacing * 6.9 + rectDimensions}
+		fillColor = 230
+		if(this.onShareButton(mouseX, mouseY))
+		{
+			fillColor = color(this.onButtonColor)
+			cursor('pointer')
+		}
+		fill(fillColor);
+		rect(distFromRight - rectDimensions, fromTop + lineSpacing * 6.9, rectDimensions, rectDimensions, rectDimensions / 15)
+		
+		//SHARE ICON
+		x = distFromRight - rectDimensions + (rectDimensions / 2)
+		y = fromTop + lineSpacing * 6.95 + (lineSpacing /2)
+		s = statsTextSize / 150
+
+		push();
+		translate(-71 * s,-50 * s)
+
+		fill(255)
+		noStroke();
+
+		//top of rect
+		rect(x, y, 50 * s, 15 * s)
+		rect(x + (90 * s), y, 50 * s, 15 * s)
+		//sides of rect
+		rect(x, y, 15 * s, 140 * s)
+		rect(x + (125 * s), y, 15 * s, 140 * s)
+		//bottom of rect
+		rect(x, y + (125 * s), 130 * s, 15 * s)
+		//share bar in middle
+		rect(x + (62.5 * s), y - (55 * s), 15 * s, 125 * s)
+
+		//angled rectangles
+		push();
+		angleMode(DEGREES);
+		translate(x + (62.5 * s), y - (55 * s));
+		rotate(-45);
+		rect(0, 0, 15 * s, 50 * s);
+		pop();
+
+		push();
+		angleMode(DEGREES);
+		translate(x + (70 * s), y - (70 * s));
+		rotate(45);
+		rect(0, 0, 15 * s, 55 * s);
+		pop();
+		pop();
+
+		//RESTART BUTTON
+		rectWidth = resizeCanvasData.currentWidth / 5
+		this.restartDimensions = {xLeft: resizeCanvasData.currentWidth/2 - (rectWidth / 2), 
+								xRight: resizeCanvasData.currentWidth/2 - (rectWidth / 2) + rectWidth, 
+								yTop: fromTop + lineSpacing * 6.9, 
+								yBottom: fromTop + lineSpacing * 6.9 + lineSpacing}
+		fillColor = 100
+		if(this.onRestartButton(mouseX, mouseY))
+		{
+			fillColor = color(this.onButtonColor)
+			cursor('pointer')
+		}
+
+		fill(fillColor);
+		rect(width/2 - (rectWidth / 2), fromTop + lineSpacing * 6.9, rectWidth, lineSpacing, rectWidth / 30)
+		
+		textAlign(CENTER)
+		fill(255, 255, 255)
+		text('RESTART', resizeCanvasData.currentWidth/2, fromTop + lineSpacing * 7.5)
+
+		if(this.onRestartButton(mouseX, mouseY) || this.onShareButton(mouseX, mouseY))
+		{
+			cursor('pointer')
+		}
+		else
+		{
+			cursor('default')
+		}
 
 
 	},
@@ -863,11 +975,6 @@ gameOver =
 		{
 			return true
 		}
-	},
-
-	shareResults: function ()
-	{
-
 	},
 
 	drawMessage: function ()
@@ -5029,7 +5136,7 @@ rabbitCharacter =
 
 	getFeetPos: function ()
 	{
-		return this.yPos - (20 * this.size)
+		return this.yPos - (10 * this.size)
 	},
 
 	getCenterPos: function ()
@@ -6458,14 +6565,15 @@ function windowResized() {
 //--------------------CONTROLS BUTTONS--------------------//
 function mousePressed()
 {
-	if(gameOver.onRestartButton(mouseX, mouseY) && gameOver.drawMessageBool == true)
+	if(gameOver.onRestartButton(mouseX, mouseY) && gameOver.drawMessageBool == true || introOutro.onRestartButton(mouseX, mouseY) && introOutro.isOutro)
 	{
+		introOutro.isOutro = false;
 		currentLevel = 0;
 		statsBoard.children.current = 0;
 		startGame()
 		statsBoard.refreshGameStats()
 	}
-	if(gameOver.onShareButton(mouseX, mouseY) && gameOver.drawMessageBool == true)
+	if(gameOver.onShareButton(mouseX, mouseY) && gameOver.drawMessageBool == true || introOutro.onShareButton(mouseX, mouseY) && introOutro.isOutro)
 	{
 		saveCanvas('myScore', 'png')
 	}
